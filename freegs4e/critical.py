@@ -693,8 +693,12 @@ def inside_mask(
     psi_bndry=None,
     use_geom=True,
 ):
-    """Full identification of the diverted plasma core mask.
-    Combines inside_mask_ and geom_inside_mask.
+    """Full identification of the diverted plasma core mask. 
+    Combines inside_mask_ and geom_inside_mask. 
+    geom_inside_mask applies an additional geometrical contraint
+    aimed at resolving cases of 'flooding' of the core mask through the primary Xpoint.
+    It excludes regions based on perpendicular to segment
+    from O-point to primary X-point.
     """
     mask = inside_mask_(
         R, Z, psi, opoint, xpoint, mask_outside_limiter, psi_bndry
