@@ -1956,7 +1956,7 @@ class Equilibrium:
         if len(ind) == 0:
             return np.full(2, None)
         else:
-            return np.array([all_strikes[:, 0][ind], all_strikes[:, 1][ind]]).T
+            return np.array([all_strikes[:, 0][ind], all_strikes[:, 1][ind]]).T.squeeze()
 
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
