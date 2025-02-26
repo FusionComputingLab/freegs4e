@@ -1850,14 +1850,24 @@ class Equilibrium:
             (1.0 / self.poloidalBeta2()) + (1.0 / self.toroidalBeta())
         )
 
-    def strikepoints(self):
+    def strikepoints(
+        self, 
+        quadrant = "all", 
+        loc = None,
+        ):
         """
         This function can be used to find the strikepoints of an equilibrium (i.e
         the points at which the psi_boundary contour intersect the wall.
 
         Parameters
         ----------
-
+        quadrant: str
+            Which strikepoints to return to the user, options are "all" (returns all points) or
+            one of "lower left", "lower right", "upper left", or "upper right" quadrants (which 
+            returns point(s) in quadrant of poloidal plane with centre given by 'loc' (R,Z) pair). 
+        loc: tuple
+            (R,Z) point at which to centre the quadrants choice [m]. 
+            
         Returns
         -------
         np.array
@@ -1903,11 +1913,36 @@ class Equilibrium:
 
         # check how many strikepoints
         if len(strikes) == 0:
-            out = None
+            return None
         else:
-            out = np.concatenate(strikes, axis=0)
+            all_strikes = np.concatenate(strikes, axis=0)
+            
+        
+        # which strikepoint(s) to return
+        if quadrant == "all":
+            return all_strikes
+        else:
+            if loc == None:
+                raise ValueError(f"Need to define quadrant centre point in 'loc' (R,Z).")
+            else:                
+                if quadrant == "lower left":
+                    ind = np.where((all_strikes[:,0] < loc[0]) & (all_strikes[:,1] < loc[1]))[0]
+                elif quadrant == "lower right":
+                    ind = np.where((all_strikes[:,0] > loc[0]) & (all_strikes[:,1] < loc[1]))[0]
+                elif quadrant == "upper left":
+                    ind = np.where((all_strikes[:,0] < loc[0]) & (all_strikes[:,1] > loc[1]))[0]
+                elif quadrant == "upper right":
+                    ind = np.where((all_strikes[:,0] > loc[0]) & (all_strikes[:,1] > loc[1]))[0]
+                else:
+                    raise ValueError(f"Unexpected quadrant: {quadrant}. Choose from 'all', "
+                        f"'lower left', 'lower right', 'upper left', or 'upper right'.")
 
-        return out
+
+        # return if quadrant value required
+        if len(ind) == 0:       
+            return np.full(2, None)
+        else:
+            return np.array([all_strikes[:,0][ind], all_strikes[:,1][ind]]).T
 
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
