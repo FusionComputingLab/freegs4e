@@ -154,7 +154,7 @@ class Equilibrium:
         self._solver = multigrid.createVcycle(
             nx, ny, generator, nlevels=1, ncycle=1, niter=2, direct=True
         )
-        
+
         # separatrix data not yet calculated
         self._separatrix_data_flag = False
 
@@ -868,14 +868,13 @@ class Equilibrium:
         float
             Area of the last closed flux surface (plasma boundary) [m^2].
         """
-        
+
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
         return self._sep_area
-
 
     def separatrix_length(self):
         """
@@ -892,8 +891,8 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
         return self._sep_length
 
@@ -1099,7 +1098,9 @@ class Equilibrium:
 
         # find closest O-point to the geometric axis
         geom_axis = self.geometricAxis()[0:2]
-        o_point_ind = np.argmin(np.sum((opts[:,0:2] - geom_axis) ** 2, axis=1))
+        o_point_ind = np.argmin(
+            np.sum((opts[:, 0:2] - geom_axis) ** 2, axis=1)
+        )
 
         return opts[o_point_ind, :]
 
@@ -1149,10 +1150,15 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
-        return np.array([(self._sep_Rmax + self._sep_Rmin) / 2, (self._sep_Zmax + self._sep_Zmin) / 2])
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
+
+        return np.array(
+            [
+                (self._sep_Rmax + self._sep_Rmin) / 2,
+                (self._sep_Zmax + self._sep_Zmin) / 2,
+            ]
+        )
 
     def Rgeometric(self):
         """
@@ -1199,9 +1205,9 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
+
         return (self._sep_Rmax - self._sep_Rmin) / 2
 
     def aspectRatio(self):
@@ -1219,10 +1225,12 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
-        return (self._sep_Rmax + self._sep_Rmin) / (self._sep_Rmax - self._sep_Rmin)
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
+
+        return (self._sep_Rmax + self._sep_Rmin) / (
+            self._sep_Rmax - self._sep_Rmin
+        )
 
     def geometricElongation(self):
         """
@@ -1236,13 +1244,15 @@ class Equilibrium:
         float
             Geometric elongation of the plasma.
         """
-        
+
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
-        return (self._sep_Zmax - self._sep_Zmin) / (self._sep_Rmax - self._sep_Rmin)
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
+
+        return (self._sep_Zmax - self._sep_Zmin) / (
+            self._sep_Rmax - self._sep_Rmin
+        )
 
     def geometricElongation_upper(self):
         """
@@ -1259,10 +1269,14 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
-        return 2 * (self._sep_Zmax - self._sep_ZRmax) / (self._sep_Rmax - self._sep_Rmin)
+        return (
+            2
+            * (self._sep_Zmax - self._sep_ZRmax)
+            / (self._sep_Rmax - self._sep_Rmin)
+        )
 
     def geometricElongation_lower(self):
         """
@@ -1279,10 +1293,14 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
-        return 2 * (self._sep_ZRmax - self._sep_Zmin) / (self._sep_Rmax - self._sep_Rmin)
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
+
+        return (
+            2
+            * (self._sep_ZRmax - self._sep_Zmin)
+            / (self._sep_Rmax - self._sep_Rmin)
+        )
 
     def effectiveElongation(self):
         """
@@ -1299,9 +1317,8 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1344,8 +1361,8 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1367,8 +1384,8 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1390,9 +1407,9 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
-    
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
+
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
 
@@ -1423,31 +1440,71 @@ class Equilibrium:
 
         # check if metrics are already calculated
         if self._separatrix_data_flag is False:
-            self._separatrix_metrics() # call function
-            self._separatrix_data_flag = True # update flag
+            self._separatrix_metrics()  # call function
+            self._separatrix_data_flag = True  # update flag
 
         # create shapely object for plasma core
         plasma_boundary = sh.Polygon(self.separatrix())
 
         # same for "ideal" ellipses in each quadrant
         uo_ellipse = sh.Polygon(
-            ellipse_points(R0=self._sep_RZmax, Z0=self._sep_ZRmax, A=self._sep_Rmax - self._sep_RZmax, B=self._sep_Zmax - self._sep_ZRmax)
+            ellipse_points(
+                R0=self._sep_RZmax,
+                Z0=self._sep_ZRmax,
+                A=self._sep_Rmax - self._sep_RZmax,
+                B=self._sep_Zmax - self._sep_ZRmax,
+            )
         )
         ui_ellipse = sh.Polygon(
-            ellipse_points(R0=self._sep_RZmax, Z0=self._sep_ZRmax, A=self._sep_RZmax - self._sep_Rmin, B=self._sep_Zmax - self._sep_ZRmax)
+            ellipse_points(
+                R0=self._sep_RZmax,
+                Z0=self._sep_ZRmax,
+                A=self._sep_RZmax - self._sep_Rmin,
+                B=self._sep_Zmax - self._sep_ZRmax,
+            )
         )
         lo_ellipse = sh.Polygon(
-            ellipse_points(R0=self._sep_RZmin, Z0=self._sep_ZRmax, A=self._sep_Rmax - self._sep_RZmin, B=self._sep_ZRmax - self._sep_Zmin)
+            ellipse_points(
+                R0=self._sep_RZmin,
+                Z0=self._sep_ZRmax,
+                A=self._sep_Rmax - self._sep_RZmin,
+                B=self._sep_ZRmax - self._sep_Zmin,
+            )
         )
         li_ellipse = sh.Polygon(
-            ellipse_points(R0=self._sep_RZmin, Z0=self._sep_ZRmax, A=self._sep_RZmin - self._sep_Rmin, B=self._sep_ZRmax - self._sep_Zmin)
+            ellipse_points(
+                R0=self._sep_RZmin,
+                Z0=self._sep_ZRmax,
+                A=self._sep_RZmin - self._sep_Rmin,
+                B=self._sep_ZRmax - self._sep_Zmin,
+            )
         )
 
         # bounding box diagonals
-        uo_diag = sh.LineString([[self._sep_RZmax, self._sep_ZRmax], [self._sep_Rmax, self._sep_Zmax]])
-        ui_diag = sh.LineString([[self._sep_RZmax, self._sep_ZRmax], [self._sep_Rmin, self._sep_Zmax]])
-        lo_diag = sh.LineString([[self._sep_RZmin, self._sep_ZRmax], [self._sep_Rmax, self._sep_Zmin]])
-        li_diag = sh.LineString([[self._sep_RZmin, self._sep_ZRmax], [self._sep_Rmin, self._sep_Zmin]])
+        uo_diag = sh.LineString(
+            [
+                [self._sep_RZmax, self._sep_ZRmax],
+                [self._sep_Rmax, self._sep_Zmax],
+            ]
+        )
+        ui_diag = sh.LineString(
+            [
+                [self._sep_RZmax, self._sep_ZRmax],
+                [self._sep_Rmin, self._sep_Zmax],
+            ]
+        )
+        lo_diag = sh.LineString(
+            [
+                [self._sep_RZmin, self._sep_ZRmax],
+                [self._sep_Rmax, self._sep_Zmin],
+            ]
+        )
+        li_diag = sh.LineString(
+            [
+                [self._sep_RZmin, self._sep_ZRmax],
+                [self._sep_Rmin, self._sep_Zmin],
+            ]
+        )
 
         # find intersecting line lengths
         uo_diag_core = uo_diag.intersection(plasma_boundary).length
@@ -2078,7 +2135,7 @@ class Equilibrium:
         Returns
         -------
         None
-            Modifies eq object in place. 
+            Modifies eq object in place.
         """
 
         # calculate core separatrix
@@ -2107,7 +2164,7 @@ class Equilibrium:
         area = plasma_polygon.area
         length = plasma_polygon.length
 
-        self._sep_Rmin =  Rmin
+        self._sep_Rmin = Rmin
         self._sep_Rmax = Rmax
         self._sep_Zmin = Zmin
         self._sep_Zmax = Zmax
@@ -2117,7 +2174,8 @@ class Equilibrium:
         self._sep_RZmax = RZmax
         self._sep_area = area
         self._sep_length = length
-                
+
+
 def ellipse_points(R0, Z0, A, B, N=360):
     """
     This function generates the (R,Z) points of an ellipse:
@@ -2141,6 +2199,7 @@ def ellipse_points(R0, Z0, A, B, N=360):
     Z = Z0 + B * np.sin(theta)
 
     return np.column_stack((R, Z))
+
 
 if __name__ == "__main__":
 
