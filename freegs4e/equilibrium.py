@@ -154,6 +154,9 @@ class Equilibrium:
         self._solver = multigrid.createVcycle(
             nx, ny, generator, nlevels=1, ncycle=1, niter=2, direct=True
         )
+        
+        # separatrix data not yet calculated
+        self._separatrix_data_flag = False
 
     def create_psi_plasma_default(
         self, adaptive_centre=False, gpars=(0.5, 0.5, 0, 2)
@@ -865,12 +868,14 @@ class Equilibrium:
         float
             Area of the last closed flux surface (plasma boundary) [m^2].
         """
+        
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
+        return self._sep_area
 
-        return area
 
     def separatrix_length(self):
         """
@@ -885,59 +890,12 @@ class Equilibrium:
             Circumference of the last closed flux surface (plasma boundary) [m].
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
 
-        return length
-
-    def separatrix_metrics(self):
-        """
-        Function that returns min/max (R,Z) points on the last closed flux surface,
-        its area, and its circumference.
-
-        Depiction here: https://imas-data-dictionary.readthedocs.io/en/latest/_downloads/23716946c6f02da1817f55b2f453444d/DefinitionEqBoundary.svg
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        float x 8
-            List of core boundary extrema Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax [m].
-        float
-            The area of the core plasma boundary [m^2].
-        float
-            The circumference of the core plasma boundary [m].
-        """
-
-        # calculate core separatrix
-        core_boundary = self.separatrix()
-
-        # min/max values on core boundary
-        Rmin = np.min(core_boundary[:, 0])
-        Rmax = np.max(core_boundary[:, 0])
-        Zmin = np.min(core_boundary[:, 1])
-        Zmax = np.max(core_boundary[:, 1])
-
-        # find corresponding indices for these
-        ZRmin_arg = np.argmin(core_boundary[:, 0])
-        ZRmax_arg = np.argmax(core_boundary[:, 0])
-        RZmin_arg = np.argmin(core_boundary[:, 1])
-        RZmax_arg = np.argmax(core_boundary[:, 1])
-
-        # use indices to find corresponding coords
-        ZRmin = core_boundary[ZRmin_arg, 1]
-        ZRmax = core_boundary[ZRmax_arg, 1]
-        RZmin = core_boundary[RZmin_arg, 0]
-        RZmax = core_boundary[RZmax_arg, 0]
-
-        # use shapely to define polygon of core plasma
-        plasma_polygon = sh.Polygon(core_boundary)
-        area = plasma_polygon.area
-        length = plasma_polygon.length
-
-        return Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length
+        return self._sep_length
 
     def getForces(self):
         """
@@ -1136,9 +1094,14 @@ class Equilibrium:
             Returns [R, Z, ψ(R, Z)] at magnetic axis location  [m, m, Webers/2pi].
         """
 
-        opt, xpt = critical.find_critical(self.R, self.Z, self.psi())
+        # find critical points
+        opts, xpts = critical.find_critical(self.R, self.Z, self.psi())
 
-        return opt[0]
+        # find closest O-point to the geometric axis
+        geom_axis = self.geometricAxis()[0:2]
+        o_point_ind = np.argmin(np.sum((opts[:,0:2] - geom_axis) ** 2, axis=1))
+
+        return opts[o_point_ind, :]
 
     def Rmagnetic(self):
         """
@@ -1184,11 +1147,12 @@ class Equilibrium:
             Geometric axis (R,Z) position [m].
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-
-        return np.array([(Rmax + Rmin) / 2, (Zmax + Zmin) / 2])
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
+        return np.array([(self._sep_Rmax + self._sep_Rmin) / 2, (self._sep_Zmax + self._sep_Zmin) / 2])
 
     def Rgeometric(self):
         """
@@ -1233,11 +1197,12 @@ class Equilibrium:
             Minor radius of the plasma [m].
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-
-        return (Rmax - Rmin) / 2
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
+        return (self._sep_Rmax - self._sep_Rmin) / 2
 
     def aspectRatio(self):
         """
@@ -1252,11 +1217,12 @@ class Equilibrium:
             Aspect ratio of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-
-        return (Rmax + Rmin) / (Rmax - Rmin)
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
+        return (self._sep_Rmax + self._sep_Rmin) / (self._sep_Rmax - self._sep_Rmin)
 
     def geometricElongation(self):
         """
@@ -1270,12 +1236,13 @@ class Equilibrium:
         float
             Geometric elongation of the plasma.
         """
-
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-
-        return (Zmax - Zmin) / (Rmax - Rmin)
+        
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
+        return (self._sep_Zmax - self._sep_Zmin) / (self._sep_Rmax - self._sep_Rmin)
 
     def geometricElongation_upper(self):
         """
@@ -1290,11 +1257,12 @@ class Equilibrium:
             Geometric elongation of the upper part of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
 
-        return 2 * (Zmax - ZRmax) / (Rmax - Rmin)
+        return 2 * (self._sep_Zmax - self._sep_ZRmax) / (self._sep_Rmax - self._sep_Rmin)
 
     def geometricElongation_lower(self):
         """
@@ -1309,11 +1277,12 @@ class Equilibrium:
             Geometric elongation of the lower part of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-
-        return 2 * (ZRmax - Zmin) / (Rmax - Rmin)
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
+        return 2 * (self._sep_ZRmax - self._sep_Zmin) / (self._sep_Rmax - self._sep_Rmin)
 
     def effectiveElongation(self):
         """
@@ -1328,12 +1297,14 @@ class Equilibrium:
             Effective elongation of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
 
-        R_geom = (Rmax + Rmin) / 2
-        R_minor = (Rmax - Rmin) / 2
+        R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
+        R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
 
         return self.plasmaVolume() / (2.0 * R_geom * (np.pi**2) * (R_minor**2))
 
@@ -1371,13 +1342,15 @@ class Equilibrium:
             Upper triangularity of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-        R_geom = (Rmax + Rmin) / 2
-        R_minor = (Rmax - Rmin) / 2
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
 
-        return (R_geom - RZmin) / R_minor
+        R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
+        R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
+
+        return (R_geom - self._sep_RZmin) / R_minor
 
     def triangularity_lower(self):
         """
@@ -1392,13 +1365,15 @@ class Equilibrium:
             Lower triangularity of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-        R_geom = (Rmax + Rmin) / 2
-        R_minor = (Rmax - Rmin) / 2
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
 
-        return (R_geom - RZmax) / R_minor
+        R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
+        R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
+
+        return (R_geom - self._sep_RZmax) / R_minor
 
     def triangularity(self):
         """
@@ -1413,13 +1388,15 @@ class Equilibrium:
             Triangularity of the plasma.
         """
 
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
-        R_geom = (Rmax + Rmin) / 2
-        R_minor = (Rmax - Rmin) / 2
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
+    
+        R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
+        R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
 
-        return (R_geom - (RZmax + RZmin) / 2) / R_minor
+        return (R_geom - (self._sep_RZmax + self._sep_RZmin) / 2) / R_minor
 
     def squareness(self):
         """
@@ -1444,33 +1421,33 @@ class Equilibrium:
             Lower inner squareness.
         """
 
-        # find separatrix metrics
-        Rmin, Rmax, Zmin, Zmax, ZRmin, ZRmax, RZmin, RZmax, area, length = (
-            self.separatrix_metrics()
-        )
+        # check if metrics are already calculated
+        if self._separatrix_data_flag is False:
+            self._separatrix_metrics() # call function
+            self._separatrix_data_flag = True # update flag
 
         # create shapely object for plasma core
         plasma_boundary = sh.Polygon(self.separatrix())
 
         # same for "ideal" ellipses in each quadrant
         uo_ellipse = sh.Polygon(
-            ellipse_points(R0=RZmax, Z0=ZRmax, A=Rmax - RZmax, B=Zmax - ZRmax)
+            ellipse_points(R0=self._sep_RZmax, Z0=self._sep_ZRmax, A=self._sep_Rmax - self._sep_RZmax, B=self._sep_Zmax - self._sep_ZRmax)
         )
         ui_ellipse = sh.Polygon(
-            ellipse_points(R0=RZmax, Z0=ZRmax, A=RZmax - Rmin, B=Zmax - ZRmax)
+            ellipse_points(R0=self._sep_RZmax, Z0=self._sep_ZRmax, A=self._sep_RZmax - self._sep_Rmin, B=self._sep_Zmax - self._sep_ZRmax)
         )
         lo_ellipse = sh.Polygon(
-            ellipse_points(R0=RZmin, Z0=ZRmax, A=Rmax - RZmin, B=ZRmax - Zmin)
+            ellipse_points(R0=self._sep_RZmin, Z0=self._sep_ZRmax, A=self._sep_Rmax - self._sep_RZmin, B=self._sep_ZRmax - self._sep_Zmin)
         )
         li_ellipse = sh.Polygon(
-            ellipse_points(R0=RZmin, Z0=ZRmax, A=RZmin - Rmin, B=ZRmax - Zmin)
+            ellipse_points(R0=self._sep_RZmin, Z0=self._sep_ZRmax, A=self._sep_RZmin - self._sep_Rmin, B=self._sep_ZRmax - self._sep_Zmin)
         )
 
         # bounding box diagonals
-        uo_diag = sh.LineString([[RZmax, ZRmax], [Rmax, Zmax]])
-        ui_diag = sh.LineString([[RZmax, ZRmax], [Rmin, Zmax]])
-        lo_diag = sh.LineString([[RZmin, ZRmax], [Rmax, Zmin]])
-        li_diag = sh.LineString([[RZmin, ZRmax], [Rmin, Zmin]])
+        uo_diag = sh.LineString([[self._sep_RZmax, self._sep_ZRmax], [self._sep_Rmax, self._sep_Zmax]])
+        ui_diag = sh.LineString([[self._sep_RZmax, self._sep_ZRmax], [self._sep_Rmin, self._sep_Zmax]])
+        lo_diag = sh.LineString([[self._sep_RZmin, self._sep_ZRmax], [self._sep_Rmax, self._sep_Zmin]])
+        li_diag = sh.LineString([[self._sep_RZmin, self._sep_ZRmax], [self._sep_Rmin, self._sep_Zmin]])
 
         # find intersecting line lengths
         uo_diag_core = uo_diag.intersection(plasma_boundary).length
@@ -2088,7 +2065,59 @@ class Equilibrium:
 
         return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
 
+    def _separatrix_metrics(self):
+        """
+        Function that returns min/max (R,Z) points on the last closed flux surface,
+        its area, and its circumference.
 
+        Depiction here: https://imas-data-dictionary.readthedocs.io/en/latest/_downloads/23716946c6f02da1817f55b2f453444d/DefinitionEqBoundary.svg
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+            Modifies eq object in place. 
+        """
+
+        # calculate core separatrix
+        core_boundary = self.separatrix()
+
+        # min/max values on core boundary
+        Rmin = np.min(core_boundary[:, 0])
+        Rmax = np.max(core_boundary[:, 0])
+        Zmin = np.min(core_boundary[:, 1])
+        Zmax = np.max(core_boundary[:, 1])
+
+        # find corresponding indices for these
+        ZRmin_arg = np.argmin(core_boundary[:, 0])
+        ZRmax_arg = np.argmax(core_boundary[:, 0])
+        RZmin_arg = np.argmin(core_boundary[:, 1])
+        RZmax_arg = np.argmax(core_boundary[:, 1])
+
+        # use indices to find corresponding coords
+        ZRmin = core_boundary[ZRmin_arg, 1]
+        ZRmax = core_boundary[ZRmax_arg, 1]
+        RZmin = core_boundary[RZmin_arg, 0]
+        RZmax = core_boundary[RZmax_arg, 0]
+
+        # use shapely to define polygon of core plasma
+        plasma_polygon = sh.Polygon(core_boundary)
+        area = plasma_polygon.area
+        length = plasma_polygon.length
+
+        self._sep_Rmin =  Rmin
+        self._sep_Rmax = Rmax
+        self._sep_Zmin = Zmin
+        self._sep_Zmax = Zmax
+        self._sep_ZRmin = ZRmin
+        self._sep_ZRmax = ZRmax
+        self._sep_RZmin = RZmin
+        self._sep_RZmax = RZmax
+        self._sep_area = area
+        self._sep_length = length
+                
 def ellipse_points(R0, Z0, A, B, N=360):
     """
     This function generates the (R,Z) points of an ellipse:
@@ -2112,194 +2141,6 @@ def ellipse_points(R0, Z0, A, B, N=360):
     Z = Z0 + B * np.sin(theta)
 
     return np.column_stack((R, Z))
-
-
-# def refine(eq,
-#            nx=None,
-#            ny=None
-#            ):
-#     """
-#     Function for changing the resolution of the equilibrium.
-
-#     Parameters
-#     ----------
-#     eq: class
-#         Equilibrium class object.
-#     nx : int
-#         New number of radial grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
-#     ny : int
-#         New number of vertical grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
-
-#     Returns
-#     -------
-#     class
-#         Returns a new equilibrium object with the new results.
-
-#     """
-
-#     # by default double the number of intervals
-#     if not nx:
-#         nx = 2 * (eq.R.shape[0] - 1) + 1
-#     if not ny:
-#         ny = 2 * (eq.R.shape[1] - 1) + 1
-
-#     # define the new eq object
-#     result = Equilibrium(
-#         tokamak=eq.tokamak,
-#         Rmin=eq.Rmin,
-#         Rmax=eq.Rmax,
-#         Zmin=eq.Zmin,
-#         Zmax=eq.Zmax,
-#         boundary=eq._applyBoundary,
-#         order=eq.order,
-#         nx=nx,
-#         ny=ny,
-#     )
-
-#     # update the plasma psi from old eq
-#     plasma_psi = eq.psi_func(result.R, result.Z, grid=False)
-#     result._updatePlasmaPsi(plasma_psi)
-
-#     # copies profiles and constrain objects if needed
-#     if hasattr(eq, "_profiles"):
-#         result._profiles = eq._profiles
-
-#     if hasattr(eq, "control"):
-#         result.control = eq.control
-
-#     return result
-
-
-# def coarsen(eq):
-#     """
-#     Reduce grid resolution, returning a new equilibrium.
-
-#     Parameters
-#     ----------
-#     eq: class
-#         Equilibrium class object.
-
-#     Returns
-#     -------
-#     class
-#         Returns a new equilibrium object with the new results.
-
-#     """
-
-#     plasma_psi = multigrid.restrict(eq.plasma_psi)
-#     nx, ny = plasma_psi.shape
-
-#     result = Equilibrium(
-#         tokamak=eq.tokamak,
-#         Rmin=eq.Rmin,
-#         Rmax=eq.Rmax,
-#         Zmin=eq.Zmin,
-#         Zmax=eq.Zmax,
-#         nx=nx,
-#         ny=ny,
-#     )
-
-#     result._updatePlasmaPsi(plasma_psi)
-
-#     if hasattr(eq, "_profiles"):
-#         result._profiles = eq._profiles
-
-#     if hasattr(eq, "control"):
-#         result.control = eq.control
-
-#     return result
-
-
-# def newDomain(
-#     eq,
-#     Rmin=None,
-#     Rmax=None,
-#     Zmin=None,
-#     Zmax=None,
-#     nx=None,
-#     ny=None
-#     ):
-#     """
-#     Creates a new equilibrium object, solving in a different domain.
-#     The domain size (Rmin, Rmax, Zmin, Zmax) and resolution (nx,ny)
-#     are taken from the input equilibrium eq if not specified.
-
-#     Parameters
-#     ----------
-#     eq: class
-#         Equilibrium class object.
-#     Rmin : float
-#         Minimum major radius [m].
-#     Rmax : float
-#         Maximum major radius [m].
-#     Zmin : float
-#         Minimum height [m].
-#     Zmax : float
-#         Maximum height [m].
-#     nx : int
-#         Number of radial grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
-#     ny : int
-#         Number of vertical grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
-
-#     Returns
-#     -------
-#     class
-#         Returns a new equilibrium object with the new results.
-
-#     """
-
-#     if Rmin is None:
-#         Rmin = eq.Rmin
-#     if Rmax is None:
-#         Rmax = eq.Rmax
-#     if Zmin is None:
-#         Zmin = eq.Zmin
-#     if Zmax is None:
-#         Zmax = eq.Zmax
-#     if nx is None:
-#         nx = eq.R.shape[0]
-#     if ny is None:
-#         ny = eq.R.shape[0]
-
-#     # Create a new equilibrium with the new domain
-#     result = Equilibrium(
-#         tokamak=eq.tokamak,
-#         Rmin=Rmin,
-#         Rmax=Rmax,
-#         Zmin=Zmin,
-#         Zmax=Zmax,
-#         nx=nx,
-#         ny=ny,
-#     )
-
-#     # Calculate the current on the old grid
-#     profiles = eq._profiles
-#     Jtor = profiles.Jtor(eq.R, eq.Z, eq.psi())
-
-#     # Interpolate Jtor onto new grid
-#     Jtor_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], Jtor)
-#     Jtor_new = Jtor_func(result.R, result.Z, grid=False)
-
-#     result._applyBoundary(result, Jtor_new, result.plasma_psi)
-
-#     # Right hand side of G-S equation
-#     rhs = -mu0 * result.R * Jtor_new
-
-#     # Copy boundary conditions
-#     rhs[0, :] = result.plasma_psi[0, :]
-#     rhs[:, 0] = result.plasma_psi[:, 0]
-#     rhs[-1, :] = result.plasma_psi[-1, :]
-#     rhs[:, -1] = result.plasma_psi[:, -1]
-
-#     # Call elliptic solver
-#     plasma_psi = result._solver(result.plasma_psi, rhs)
-
-#     result._updatePlasmaPsi(plasma_psi)
-
-#     # Solve once more, calculating Jtor using new psi
-#     result.solve(profiles)
-
-#     return result
 
 if __name__ == "__main__":
 
