@@ -852,7 +852,7 @@ class Equilibrium:
         ----------
         ntheta : int
             Number of points on the boundary to return.
-        stdev : int
+        stdev : float
             Number of standard deviations after which outliers are excluded.
 
         Returns
@@ -873,7 +873,7 @@ class Equilibrium:
         )  # mean distance for each point
 
         # define a threshold (median + n * standard deviations)
-        threshold = np.median(mean_distances) + stdev * np.std(mean_distances)
+        threshold = np.median(mean_distances) + stdev * np.quantile(dist_matrix.reshape(-1), q=.8)
 
         # filter points
         filtered_points = points[mean_distances < threshold]
