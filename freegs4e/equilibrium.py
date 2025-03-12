@@ -27,8 +27,8 @@ import numpy as np
 import shapely as sh
 from numpy import array, exp, linspace, meshgrid, pi
 from scipy import interpolate
-from scipy.spatial.distance import pdist, squareform
 from scipy.integrate import cumulative_trapezoid, romb
+from scipy.spatial.distance import pdist, squareform
 
 from . import critical, machine, multigrid, polygons  # multigrid solver
 from .boundary import fixedBoundary, freeBoundary  # finds free-boundary
@@ -843,10 +843,10 @@ class Equilibrium:
         Return (ntheta x 2) array of (R,Z) points on the last closed
         flux surface (plasma boundary), equally spaced in the geometric
         poloidal angle.
-        
-        Sometimes there may be spurious points far from the core plasma (due to 
+
+        Sometimes there may be spurious points far from the core plasma (due to
         open field lines), we exclude these by setting an average threshold distance
-        between all the points (excluding those outside the threshold). 
+        between all the points (excluding those outside the threshold).
 
         Parameters
         ----------
@@ -854,19 +854,23 @@ class Equilibrium:
             Number of points on the boundary to return.
         stdev : int
             Number of standard deviations after which outliers are excluded.
-            
+
         Returns
         -------
         np.array
             (R,Z) points on the last closed flux surface (plasma boundary).
         """
-        
+
         # initial points on core boundary
-        points = np.array(critical.find_separatrix(self, ntheta=ntheta))[:, 0:2]
+        points = np.array(critical.find_separatrix(self, ntheta=ntheta))[
+            :, 0:2
+        ]
 
         # compute pairwise distances using pdist
-        dist_matrix = squareform(pdist(points))        # convert to square form
-        mean_distances = np.mean(dist_matrix, axis=1)  # mean distance for each point
+        dist_matrix = squareform(pdist(points))  # convert to square form
+        mean_distances = np.mean(
+            dist_matrix, axis=1
+        )  # mean distance for each point
 
         # define a threshold (median + n * standard deviations)
         threshold = np.median(mean_distances) + stdev * np.std(mean_distances)
