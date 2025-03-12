@@ -873,7 +873,9 @@ class Equilibrium:
         )  # mean distance for each point
 
         # define a threshold (median + n * standard deviations)
-        threshold = np.median(mean_distances) + stdev * np.quantile(dist_matrix.reshape(-1), q=.8)
+        threshold = np.median(mean_distances) + stdev * np.quantile(
+            dist_matrix.reshape(-1), q=0.8
+        )
 
         # filter points
         filtered_points = points[mean_distances < threshold]
