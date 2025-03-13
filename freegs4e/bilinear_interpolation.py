@@ -41,8 +41,8 @@ def biliint(R, Z, psi, points):
     idxs_R = np.sum(points_R < 0, axis=0)
     idxs_Z = np.sum(points_Z < 0, axis=0)
 
-    idxs_R = np.where(idxs_R<nx, idxs_R, nx-1)
-    idxs_Z = np.where(idxs_Z<ny, idxs_Z, ny-1)
+    idxs_R = np.where(idxs_R < nx, idxs_R, nx - 1)
+    idxs_Z = np.where(idxs_Z < ny, idxs_Z, ny - 1)
 
     iR = idxs_R[:, np.newaxis, np.newaxis]
     iZ = idxs_Z[:, np.newaxis, np.newaxis]
