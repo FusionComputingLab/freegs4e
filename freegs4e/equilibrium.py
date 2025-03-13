@@ -1143,12 +1143,14 @@ class Equilibrium:
             average major radius [m].
         """
 
-        if hasattr(self, '_profiles'):
+        if hasattr(self, "_profiles"):
             meanR = np.mean(self.R * self._profiles.jtor)
             return meanR
         else:
-            print("The equilibrium is not a GS solution. Please solve the eq. first.")
-        
+            print(
+                "The equilibrium is not a GS solution. Please solve the eq. first."
+            )
+
     def Zcurrent(self):
         """
         The average height of the toroidal current distribution
@@ -1162,11 +1164,13 @@ class Equilibrium:
             average height [m].
         """
 
-        if hasattr(self, '_profiles'):
+        if hasattr(self, "_profiles"):
             meanZ = np.mean(self.Z * self._profiles.jtor)
             return meanZ
         else:
-            print("The equilibrium is not a GS solution. Please solve the eq. first.")
+            print(
+                "The equilibrium is not a GS solution. Please solve the eq. first."
+            )
 
     def Rmagnetic(self):
         """
