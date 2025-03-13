@@ -1144,7 +1144,9 @@ class Equilibrium:
         """
 
         if hasattr(self, "_profiles"):
-            meanR = np.mean(self.R * self._profiles.jtor)
+            meanR = np.sum(self.R * self._profiles.jtor) / np.sum(
+                self._profiles.jtor
+            )
             return meanR
         else:
             print(
@@ -1165,7 +1167,9 @@ class Equilibrium:
         """
 
         if hasattr(self, "_profiles"):
-            meanZ = np.mean(self.Z * self._profiles.jtor)
+            meanZ = np.sum(self.Z * self._profiles.jtor) / np.sum(
+                self._profiles.jtor
+            )
             return meanZ
         else:
             print(
