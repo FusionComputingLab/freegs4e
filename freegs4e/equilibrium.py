@@ -28,6 +28,7 @@ import shapely as sh
 from numpy import array, exp, linspace, meshgrid, pi
 from scipy import interpolate
 from scipy.integrate import cumulative_trapezoid, romb
+from scipy.spatial.distance import pdist, squareform
 
 from . import critical, machine, multigrid, polygons  # multigrid solver
 from .boundary import fixedBoundary, freeBoundary  # finds free-boundary
@@ -837,16 +838,22 @@ class Equilibrium:
 
         return self._profiles.pressure(psinorm)
 
-    def separatrix(self, ntheta=360):
+    def separatrix(self, ntheta=360, stdev=4):
         """
         Return (ntheta x 2) array of (R,Z) points on the last closed
         flux surface (plasma boundary), equally spaced in the geometric
         poloidal angle.
 
+        Sometimes there may be spurious points far from the core plasma (due to
+        open field lines), we exclude these by setting an average threshold distance
+        between all the points (excluding those outside the threshold).
+
         Parameters
         ----------
         ntheta : int
             Number of points on the boundary to return.
+        stdev : float
+            Number of standard deviations after which outliers are excluded.
 
         Returns
         -------
@@ -854,7 +861,26 @@ class Equilibrium:
             (R,Z) points on the last closed flux surface (plasma boundary).
         """
 
-        return array(critical.find_separatrix(self, ntheta=ntheta))[:, 0:2]
+        # initial points on core boundary
+        points = np.array(critical.find_separatrix(self, ntheta=ntheta))[
+            :, 0:2
+        ]
+
+        # compute pairwise distances using pdist
+        dist_matrix = squareform(pdist(points))  # convert to square form
+        mean_distances = np.mean(
+            dist_matrix, axis=1
+        )  # mean distance for each point
+
+        # define a threshold (median + n * standard deviations)
+        threshold = np.median(mean_distances) + stdev * np.quantile(
+            dist_matrix.reshape(-1), q=0.8
+        )
+
+        # filter points
+        filtered_points = points[mean_distances < threshold]
+
+        return filtered_points
 
     def separatrix_area(self):
         """
