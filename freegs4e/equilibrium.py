@@ -1130,6 +1130,52 @@ class Equilibrium:
 
         return opts[o_point_ind, :]
 
+    def Rcurrent(self):
+        """
+        The average major radius of the toroidal current distribution
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            average major radius [m].
+        """
+
+        if hasattr(self, "_profiles"):
+            meanR = np.sum(self.R * self._profiles.jtor) / np.sum(
+                self._profiles.jtor
+            )
+            return meanR
+        else:
+            print(
+                "The equilibrium is not a GS solution. Please solve the eq. first."
+            )
+
+    def Zcurrent(self):
+        """
+        The average height of the toroidal current distribution
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            average height [m].
+        """
+
+        if hasattr(self, "_profiles"):
+            meanZ = np.sum(self.Z * self._profiles.jtor) / np.sum(
+                self._profiles.jtor
+            )
+            return meanZ
+        else:
+            print(
+                "The equilibrium is not a GS solution. Please solve the eq. first."
+            )
+
     def Rmagnetic(self):
         """
         The major radius of the magnetic axis.
