@@ -547,7 +547,9 @@ class ConstrainPaxisIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, 'L') is False:
+            self.L=1
+            print('This is using self.L=1. Please check if this is appropriate')
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -567,7 +569,9 @@ class ConstrainPaxisIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, 'L') is False:
+            self.L=1
+            print('This is using self.L=1. Please check if this is appropriate')
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
@@ -713,7 +717,9 @@ class Fiesta_Topeol(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, 'L') is False:
+            self.L=1
+            print('This is using self.L=1. Please check if this is appropriate')
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -733,7 +739,9 @@ class Fiesta_Topeol(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, 'L') is False:
+            self.L=1
+            print('This is using self.L=1. Please check if this is appropriate')
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
