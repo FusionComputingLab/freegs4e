@@ -833,7 +833,8 @@ class Lao85(Profile):
             self.beta = np.concatenate((self.beta, [-np.sum(self.beta)]))
         self.beta_exp = np.arange(0, len(self.beta))
 
-    def Jtor_part2(self, R, Z, psi, psi_axis, psi_bndry, mask):
+    def Jtor_part2(self, R, Z, psi, psi_axis, psi_bndry, mask, 
+                   torefine=False, refineR=None):
         """
         Second part of the calculation that will use the explicit
         parameterisation of the chosen profile function to calculate Jtor.
@@ -864,6 +865,7 @@ class Lao85(Profile):
         mask : np.ndarray
             Mask of points inside the last closed flux surface.
 
+            
         Returns
         -------
         np.array
@@ -878,6 +880,9 @@ class Lao85(Profile):
         # grid sizes
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
+        
+        if torefine:
+            R = 1.0*refineR
 
         # calculate normalised psi
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
@@ -885,16 +890,14 @@ class Lao85(Profile):
 
         # calculate the p' and FF' profiles
         pprime_term = (
-            psi_norm[np.newaxis, :, :]
-            ** self.alpha_exp[:, np.newaxis, np.newaxis]
+            psi_norm[np.newaxis, :, :] ** self.alpha_exp[:, np.newaxis, np.newaxis]
         )
         pprime_term *= self.alpha[:, np.newaxis, np.newaxis]
         pprime_term = np.sum(pprime_term, axis=0)
         pprime_term *= R / self.Raxis
 
         ffprime_term = (
-            psi_norm[np.newaxis, :, :]
-            ** self.beta_exp[:, np.newaxis, np.newaxis]
+            psi_norm[np.newaxis, :, :] ** self.beta_exp[:, np.newaxis, np.newaxis]
         )
         ffprime_term *= self.beta[:, np.newaxis, np.newaxis]
         ffprime_term = np.sum(ffprime_term, axis=0)
@@ -904,7 +907,9 @@ class Lao85(Profile):
         # sum together
         Jtor = pprime_term + ffprime_term
 
-        # if there is a masking function, use it
+        if torefine:
+            return Jtor
+
         if mask is not None:
             Jtor *= mask
 
@@ -913,9 +918,7 @@ class Lao85(Profile):
             jtorIp = np.sum(Jtor)
             if jtorIp == 0:
                 self.problem_psi = psi
-                raise ValueError(
-                    "Total plasma current is zero! Cannot renormalise."
-                )
+                raise ValueError("Total plasma current is zero! Cannot renormalise.")
             L = self.Ip / (jtorIp * dR * dZ)
             Jtor = L * Jtor
         else:
