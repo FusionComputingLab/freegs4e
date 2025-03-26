@@ -350,7 +350,7 @@ def scan_for_crit(R, Z, psi):
                 if det != 0:
                     delta_R = -(fR * fZZ - 0.5 * fRZ * fZ) / det
                     delta_Z = -(fZ * fRR - 0.5 * fRZ * fR) / det
-                if np.abs(delta_R) <= dR and np.abs(delta_Z) <= dZ:
+                if np.abs(delta_R) < 1.5*dR and np.abs(delta_Z) < 1.5*dZ:
                     est_psi = psi[i, j] + 0.5 * (
                         fR * delta_R + fZ * delta_Z
                     )  # + 0.5*(fRR*delta_R**2 + fZZ*delta_Z**2 + fRZ*delta_R*delta_Z)
