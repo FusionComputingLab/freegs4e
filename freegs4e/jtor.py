@@ -814,9 +814,9 @@ class Lao85(Profile):
         beta : list or np.array
             Polynomial coefficients for ffprime.
         alpha_logic : bool
-            If True, include the n_{P+1} term (see Jtor2).
+            If True, include the n_{P+1} term to ensure pprime(1)=0 (see Jtor2).
         beta_logic : bool
-            If True, include the n_{F+1} term (see Jtor2).
+            If True, include the n_{F+1} term to ensure ffprime(1)=0 (see Jtor2).
         Raxis : float
             Radial scaling parameter (non-negative).
         Ip_logic : bool
@@ -945,6 +945,9 @@ class Lao85(Profile):
 
         # sum together
         Jtor = pprime_term + ffprime_term
+
+        # put to zero all current outside the LCFS
+        Jtor *= (psi > psi_bndry)
 
         Jtor *= (self.Ip*Jtor > 0)
 
