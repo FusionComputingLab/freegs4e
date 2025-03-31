@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "freegs4e"
-version = "0.5.0"
+version = "0.6.0"
 authors = [
     {name = "The FreeGS4E and FreeGS developers"}
 ]
