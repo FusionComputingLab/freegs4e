@@ -2066,6 +2066,83 @@ class Equilibrium:
                 [all_strikes[:, 0][ind], all_strikes[:, 1][ind]]
             ).T.squeeze()
 
+    def jtor_1D(self, N):
+        """
+
+        Calculate the flux surface averaged toroidal current density (as a function of normalised psi):
+
+            < j_tor > (ψ) = < j_tor/R > / < 1/R >
+
+        where the flux surface average is defined as:
+
+            < f > = d/d psi int_{psi' <= psi} f dV,
+
+        where dV = 2 pi R ds \ |∇ψ|.
+
+        Parameters
+        ----------
+        N : int
+            Number of discretisation points.
+
+        Returns
+        -------
+        np.array
+            Flux surface averaged toroidal current density (as a function of normalised psi, length N).
+        """
+
+        # compute the gradient of psi
+        dPsidR = self.psi_func(self.R, self.Z, dx=1, grid=False)
+        dPsidZ = self.psi_func(self.R, self.Z, dy=1, grid=False)
+        grad_psi = np.sqrt(dPsidR**2 + dPsidZ**2)  # |∇ψ|
+
+        # define quantities to flux-average
+        F1 = self._profiles.jtor / self.R  # J_phi / R
+        F2 = 1 / self.R  # 1 / R
+
+        # compute normalised psi levels
+        psi_levels = self.psi_1D(N)
+        psi_norm_levels = self.psiN_1D(N)
+
+        # compute enclosed integral
+        F_Q1 = np.zeros(len(psi_levels))
+        F_Q2 = np.zeros(len(psi_levels))
+
+        dV = 2 * np.pi * self.R * (1 / grad_psi)  # volume element
+
+        for i, psi_k in enumerate(self.psi_1D(N)):
+            mask = self.psi() <= psi_k  # region inside the flux surface
+
+            # apply core plasma mask
+            try:
+                F_Q1[i] = np.sum(
+                    (F1 * dV * mask) * self._profiles.limiter_core_mask
+                )
+                F_Q2[i] = np.sum(
+                    (F2 * dV * mask) * self._profiles.limiter_core_mask
+                )
+            except AttributeError as e:
+                print(e)
+                warnings.warn(
+                    "The core mask is not in place. You need to solve for the equilibrium first!"
+                )
+                raise e
+
+        # compute flux surface average ⟨Q⟩ = dF_Q/dψ_norm using UnivariateSpline
+        flux_avg_Q1_interp = interpolate.UnivariateSpline(
+            psi_norm_levels, F_Q1
+        )
+        flux_avg_Q2_interp = interpolate.UnivariateSpline(
+            psi_norm_levels, F_Q2
+        )
+
+        flux_avg_Q1 = flux_avg_Q1_interp.derivative()(psi_norm_levels)
+        flux_avg_Q2 = flux_avg_Q2_interp.derivative()(psi_norm_levels)
+
+        flux_surf_avg_jtor = flux_avg_Q1 / flux_avg_Q2
+        flux_surf_avg_jtor[-1] = 0
+
+        return flux_surf_avg_jtor
+
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
         This is a legacy function that can be used to solve for the plasma equilibrium. It
