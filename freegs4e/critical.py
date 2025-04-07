@@ -350,7 +350,7 @@ def scan_for_crit(R, Z, psi):
                 if det != 0:
                     delta_R = -(fR * fZZ - 0.5 * fRZ * fZ) / det
                     delta_Z = -(fZ * fRR - 0.5 * fRZ * fR) / det
-                if np.abs(delta_R) < 1.5*dR and np.abs(delta_Z) < 1.5*dZ:
+                if np.abs(delta_R) < 1.5 * dR and np.abs(delta_Z) < 1.5 * dZ:
                     est_psi = psi[i, j] + 0.5 * (
                         fR * delta_R + fZ * delta_Z
                     )  # + 0.5*(fRR*delta_R**2 + fZZ*delta_Z**2 + fRZ*delta_R*delta_Z)
@@ -693,8 +693,8 @@ def inside_mask(
     psi_bndry=None,
     use_geom=True,
 ):
-    """Full identification of the diverted plasma core mask. 
-    Combines inside_mask_ and geom_inside_mask. 
+    """Full identification of the diverted plasma core mask.
+    Combines inside_mask_ and geom_inside_mask.
     geom_inside_mask applies an additional geometrical contraint
     aimed at resolving cases of 'flooding' of the core mask through the primary Xpoint.
     It excludes regions based on perpendicular to segment
