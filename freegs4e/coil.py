@@ -131,6 +131,14 @@ class Coil:
         calcPsiFromGreens()
         """
         return self.controlPsi(R, Z)
+    
+    def createPsiGreensVec(self, R, Z):
+        """
+        Calculate the Greens function at every point, and return
+        array. This will be passed back to evaluate Psi in
+        calcPsiFromGreens()
+        """
+        return self.controlPsi(R, Z)
 
     def calcPsiFromGreens(self, pgreen):
         """

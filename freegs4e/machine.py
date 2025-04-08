@@ -99,6 +99,15 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             pgreen[label] = coil.createPsiGreens(R, Z)
         return pgreen
+    
+    def createPsiGreensVec(self, R, Z):
+        """
+        Calculate Greens functions
+        """
+        pgreen = np.zeros(np.shape(R))
+        for label, coil, multiplier in self.coils:
+            pgreen += multiplier * coil.createPsiGreens(R, Z)
+        return pgreen
 
     def calcPsiFromGreens(self, pgreen):
         """
@@ -341,7 +350,13 @@ class Solenoid:
         Calculate Greens functions
         """
         return self.controlPsi(R, Z)
-
+    
+    def createPsiGreensVec(self, R, Z):
+        """
+        Calculate Greens functions
+        """
+        return self.controlPsi(R, Z)
+    
     def calcPsiFromGreens(self, pgreen):
         """
         Calculate psi from Greens functions
@@ -492,6 +507,15 @@ class Machine:
         self.coils = coils
         self.wall = wall
 
+        self.n_coils = len(coils)
+        self.current_dummy_vec = np.zeros(self.n_coils)
+        self.current_vec = self.getCurrentVec()
+        
+        self.coil_names = list(self.getCurrents().keys())
+        self.coil_order = {}
+        for i,coil in enumerate(self.coil_names):
+            self.coil_order[coil] = i
+
     def __repr__(self):
         return "Machine(coils={coils}, wall={wall})".format(
             coils=self.coils, wall=self.wall
@@ -536,6 +560,19 @@ class Machine:
         for label, coil in self.coils:
             pgreen[label] = coil.createPsiGreens(R, Z)
         return pgreen
+    
+    def createPsiGreensVec(self, R, Z):
+        """
+        Pre-computes the Greens functions
+        and puts into arrays for each coil. This map can then be
+        called at a later time, and quickly return the field
+        """
+        pgreen = np.zeros([self.n_coils]+list(np.shape(R)))
+        i=0
+        for label, coil in self.coils:
+            pgreen[i] = coil.createPsiGreensVec(R, Z)
+            i += 1
+        return pgreen
 
     def calcPsiFromGreens(self, pgreen):
         """
@@ -546,6 +583,13 @@ class Machine:
         for label, coil in self.coils:
             psi_coils += coil.calcPsiFromGreens(pgreen[label])
         return psi_coils
+    
+    def getPsitokamak(self, vgreen):
+        """Uses self.current_vec and vgreen to calculate the plasma flux from all
+        coils, active and passive
+        """
+        tokamak_psi = np.sum(vgreen * self.current_vec[:,np.newaxis,np.newaxis], axis=0)
+        return tokamak_psi
 
     def Br(self, R, Z):
         """
@@ -654,7 +698,46 @@ class Machine:
         for label, coil in self.coils:
             currents[label] = coil.current
         return currents
+    
+    def getCurrentVec(self):
+        """
+        Returns an array of coil currents in Amps
+        """
+        currents = np.zeros_like(self.current_dummy_vec)
+        i=0
+        for label, coil in self.coils:
+            currents[i] = coil.current
+            i += 1
+        return currents
+    
+    def set_coil_current(self, coil_label, current_value):
+        """Allows to set the current value of a coil
 
+        Parameters
+        ----------
+        coil_label : string
+            Coil label as from self.getCurrents().keys()
+        current_value : float
+            Current value in Amps
+        """
+        i = self.coil_order[coil_label]
+        self.coils[i][1].current = current_value
+        self.current_vec[i] = current_value
+
+    def set_all_coil_currents(self, current_vec):
+        """Allows to set all current values in the vec,
+        assuming correct order.
+
+        Parameters
+        ----------
+        current_vec : np.array
+            Current values in Amps
+        """
+        
+        self.current_vec[:len(current_vec)] = current_vec
+        for i in range(len(current_vec)):
+            self.coils[i][1].current = current_vec[i]
+        
     def plot(self, axis=None, show=True):
         """
         Plot the machine coils
