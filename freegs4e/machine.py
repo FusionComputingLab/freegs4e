@@ -509,7 +509,7 @@ class Machine:
 
         self.n_coils = len(coils)
         self.current_dummy_vec = np.zeros(self.n_coils)
-        self.current_vec = self.getCurrentVec()
+        self.getCurrentsVec()
         
         self.coil_names = list(self.getCurrents().keys())
         self.coil_order = {}
@@ -699,7 +699,7 @@ class Machine:
             currents[label] = coil.current
         return currents
     
-    def getCurrentVec(self):
+    def getCurrentsVec(self):
         """
         Returns an array of coil currents in Amps
         """
@@ -708,6 +708,7 @@ class Machine:
         for label, coil in self.coils:
             currents[i] = coil.current
             i += 1
+        self.current_vec = currents
         return currents
     
     def set_coil_current(self, coil_label, current_value):
