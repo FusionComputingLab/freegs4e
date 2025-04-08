@@ -666,8 +666,11 @@ class Machine:
         returned by controlCurrents
         """
         controlcoils = [coil for label, coil in self.coils if coil.control]
-        for coil, current in zip(controlcoils, currents):
-            coil.current = current
+        controlcoils_labels = [
+            label for label, coil in self.coils if coil.control
+        ]
+        for i in range(len(controlcoils_labels)):
+            self.set_coil_current(controlcoils_labels[i], currents[i])
 
     def printCurrents(self):
         print("==========================")
