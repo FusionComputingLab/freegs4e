@@ -2066,6 +2066,134 @@ class Equilibrium:
                 [all_strikes[:, 0][ind], all_strikes[:, 1][ind]]
             ).T.squeeze()
 
+    def dr_sep(
+        self,
+        sign_flip=False,
+    ):
+        """
+        Computes the radial separation (dr_sep) between flux surfaces at the midplane 
+        (Z = 0) corresponding to the upper and lower X-points, on both the inboard and 
+        outboard sides.
+
+        The inboard dr_sep is defined as the difference in R (radial position) between 
+        the two flux surfaces intersecting Z = 0 on the inboard side (smaller R values), 
+        each corresponding to one of the X-points.
+
+        Similarly, the outboard dr_sep is the radial separation of the same flux surfaces 
+        on the outboard side (larger R values).
+
+        Parameters
+        ----------
+        sign_flip : bool
+            By convention, the function assumes the first X-point corresponds to the lower 
+            X-point, and the second to the upper X-point. So for an upper single null plasma, 
+            dr_sep_out should be positive and dr_sep_in should be negative. Setting sign_flip=True
+            will do the opposite and reverse the signs of the output values. 
+
+        Returns
+        -------
+        list of float
+            A list containing the inboard and outboard dr_sep values: 
+            [dr_sep_in, dr_sep_out].
+        """
+        
+        # extract required quantities
+        psi_bndry = self.psi_bndry
+        xpts = self.xpt
+
+        # compute absolute difference between each point's ψ and psi_bndry and then
+        # get indices of the two smallest differences
+        closest_indices = np.argsort(np.abs(xpts[:, 2] - psi_bndry))[:2]
+
+        # extract the corresponding rows (two X-points closest to psi_bndry, then sort by lowest z coord z-point)
+        closest_xpts = xpts[closest_indices]
+        closest_xpts_sorted = closest_xpts[np.argsort(closest_xpts[:, 1])]
+
+        contour0 = plt.contour(self.R, self.Z, self.psi(), levels=[closest_xpts_sorted[0,2]])
+        contour1 = plt.contour(self.R, self.Z, self.psi(), levels=[closest_xpts_sorted[1,2]])
+        plt.close()  # this isn't the most elegant but we don't need the plot itself
+
+        # for each item in the contour object there's a list of points in (r,z) (i.e. a line)
+        psi_boundary_lines0 = []
+        for i, item in enumerate(contour0.allsegs[0]):
+            psi_boundary_lines0.append(item)
+        psi_boundary_lines1 = []
+        for i, item in enumerate(contour1.allsegs[0]):
+            psi_boundary_lines1.append(item)
+            
+
+        # use the shapely package to find where each psi_boundary_line intersects
+        # the Z = 0 line
+
+        # R_limits = np.array([[min(self.tokamak.wall.R), Z], [max(self.tokamak.wall.R), Z]])
+        R_limits = np.array([[self.Rmin, 0], [self.Rmax, 0]])
+        R_line = sh.LineString(R_limits)
+
+        R_in_out0 = []
+        for j, line in enumerate(psi_boundary_lines0):
+            curve = sh.LineString(line)
+
+            # find the intersection points
+            intersection = curve.intersection(R_line)
+
+            # extract intersection points
+            if intersection.geom_type == "Point":
+                R_in_out0.append(np.squeeze(np.array(intersection.xy).T))
+            elif intersection.geom_type == "MultiPoint":
+                R_in_out0.append(
+                    np.squeeze(
+                        np.array([geom.xy for geom in intersection.geoms])
+                    )
+                )
+
+        R_in_out1 = []
+        for j, line in enumerate(psi_boundary_lines1):
+            curve = sh.LineString(line)
+
+            # find the intersection points
+            intersection = curve.intersection(R_line)
+
+            # extract intersection points
+            if intersection.geom_type == "Point":
+                R_in_out1.append(np.squeeze(np.array(intersection.xy).T))
+            elif intersection.geom_type == "MultiPoint":
+                R_in_out1.append(
+                    np.squeeze(
+                        np.array([geom.xy for geom in intersection.geoms])
+                    )
+                )
+
+        # extract points
+        R_in_out0_stacked = np.vstack(R_in_out0)
+        R_in_out1_stacked = np.vstack(R_in_out1)
+
+        # clip rows so that we only obtain the two rows with R values closest to the magnetic axis
+        R_mag = self.Rmagnetic()
+        R_in_out0_filtered = R_in_out0_stacked[np.argsort(np.abs(R_in_out0_stacked[:, 0] - R_mag))[:2]]
+        R_in_out1_filtered = R_in_out1_stacked[np.argsort(np.abs(R_in_out1_stacked[:, 0] - R_mag))[:2]]
+        
+        # sort so that the lower X-point is first
+        R_in_out0_sort = np.sort(R_in_out0_filtered,axis=0)
+        R_in_out1_sort = np.sort(R_in_out1_filtered,axis=0)
+
+        if R_in_out0_sort.shape == (2,2) and R_in_out1_sort.shape == (2,2):
+            dr_sep_in = R_in_out0_sort[0,0] - R_in_out1_sort[0,0]
+            dr_sep_out = R_in_out0_sort[1,0] - R_in_out1_sort[1,0]
+            
+            if sign_flip:
+                dr_sep_in *= -1
+                dr_sep_out *= -1
+        else:
+            print(
+                f"Expected shape (2, 2) for both R_in_out0_sort and R_in_out1_sort, "
+                f"but got {R_in_out0_sort.shape} and {R_in_out1_sort.shape} respectively. "
+                f"Cannot calculate dr_sep_in and dr_sep_out for this plasma."
+                )
+            dr_sep_in = None
+            dr_sep_out = None
+
+        return [dr_sep_in, dr_sep_out]
+
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
         This is a legacy function that can be used to solve for the plasma equilibrium. It
