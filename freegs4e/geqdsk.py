@@ -116,9 +116,9 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     # rbdry, zbdry contain the boundary of the plasma
 
     isoflux = np.array(
-        critical.find_separatrix(
-            eq, ntheta=101, opoint=opoint, xpoint=xpoint, psi=psi
-        )
+        eq.separatrix(
+            ntheta=101,
+        ),
     )
 
     ind = np.argmin(isoflux[:, 1])
