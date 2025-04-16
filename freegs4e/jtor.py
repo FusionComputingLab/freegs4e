@@ -205,7 +205,7 @@ class Profile(object):
                             self.edge_mask * alt_diverted_core_mask
                         )
                         if edge_pixels == 0:
-                            print("alternative xpt accepted!")
+                            print("Discarding 'primary' Xpoint! Please check final result")
                             xpt = xpt[1:]
                             psi_bndry = xpt[1, 2]
                             diverted_core_mask = alt_diverted_core_mask.copy()
