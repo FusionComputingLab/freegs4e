@@ -134,6 +134,7 @@ class Equilibrium:
         # generate Greens function mappings (used
         # in self.psi() to speed up calculations)
         self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
+        self._vgreen = tokamak.createPsiGreensVec(self.R, self.Z)
         # self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
 
         # assign plasma current
