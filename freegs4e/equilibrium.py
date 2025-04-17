@@ -1122,13 +1122,15 @@ class Equilibrium:
         # find critical points
         opts, xpts = critical.find_critical(self.R, self.Z, self.psi())
 
-        # find closest O-point to the geometric axis
-        geom_axis = self.geometricAxis()[0:2]
-        o_point_ind = np.argmin(
-            np.sum((opts[:, 0:2] - geom_axis) ** 2, axis=1)
-        )
+        return opts[0, :]
 
-        return opts[o_point_ind, :]
+        # # find closest O-point to the geometric axis
+        # geom_axis = self.geometricAxis()[0:2]
+        # o_point_ind = np.argmin(
+        #     np.sum((opts[:, 0:2] - geom_axis) ** 2, axis=1)
+        # )
+
+        # return opts[o_point_ind, :]
 
     def Rcurrent(self):
         """
