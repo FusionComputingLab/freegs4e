@@ -140,6 +140,24 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             pgreen += multiplier * coil.createPsiGreens(R, Z)
         return pgreen
+    
+    def createBrGreensVec(self, R, Z):
+        """
+        Calculate Br Greens functions
+        """
+        pgreen = np.zeros(np.shape(R))
+        for label, coil, multiplier in self.coils:
+            pgreen += multiplier * coil.createBrGreensVec(R, Z)
+        return pgreen
+    
+    def createBzGreensVec(self, R, Z):
+        """
+        Calculate Bz Greens functions
+        """
+        pgreen = np.zeros(np.shape(R))
+        for label, coil, multiplier in self.coils:
+            pgreen += multiplier * coil.createBzGreensVec(R, Z)
+        return pgreen
 
     def calcPsiFromGreens(self, pgreen):
         """
@@ -584,6 +602,18 @@ class Solenoid:
         Calculate Greens functions
         """
         return self.controlPsi(R, Z)
+    
+    def createBrGreensVec(self, R, Z):
+        """
+        Calculate Br Greens functions
+        """
+        return self.controlBr(R, Z)
+    
+    def createBzGreensVec(self, R, Z):
+        """
+        Calculate Bz Greens functions
+        """
+        return self.controlBz(R, Z)
 
     def calcPsiFromGreens(self, pgreen):
         """
@@ -946,6 +976,7 @@ class Machine:
         self.wall = wall
 
         self.n_coils = len(coils)
+        self.current_vec = np.zeros(self.n_coils)
         self.current_dummy_vec = np.zeros(self.n_coils)
         self.getCurrentsVec()
 
@@ -1073,16 +1104,49 @@ class Machine:
             pgreen[label] = coil.createPsiGreens(R, Z)
         return pgreen
 
-    def createPsiGreensVec(self, R, Z):
+    def createPsiGreensVec(self, R, Z, coils=None):
         """
         Pre-computes the Greens functions
         and puts into arrays for each coil. This map can then be
         called at a later time, and quickly return the field
         """
-        pgreen = np.zeros([self.n_coils] + list(np.shape(R)))
+        if coils==None:
+            coils = self.coils
+
+        pgreen = np.zeros([len(coils)] + list(np.shape(R)))
         i = 0
-        for label, coil in self.coils:
+        for label, coil in coils:
             pgreen[i] = coil.createPsiGreensVec(R, Z)
+            i += 1
+        return pgreen
+    
+    def createBrGreensVec(self, R, Z, coils=None):
+        """
+        Pre-computes the Br Greens functions
+        and puts into arrays for each coil. 
+        """
+        if coils==None:
+            coils = self.coils
+
+        pgreen = np.zeros([len(coils)] + list(np.shape(R)))
+        i = 0
+        for label, coil in coils:
+            pgreen[i] = coil.createBrGreensVec(R, Z)
+            i += 1
+        return pgreen
+    
+    def createBzGreensVec(self, R, Z, coils=None):
+        """
+        Pre-computes the Br Greens functions
+        and puts into arrays for each coil. 
+        """
+        if coils==None:
+            coils = self.coils
+
+        pgreen = np.zeros([len(coils)] + list(np.shape(R)))
+        i = 0
+        for label, coil in coils:
+            pgreen[i] = coil.createBzGreensVec(R, Z)
             i += 1
         return pgreen
 
@@ -1333,13 +1397,16 @@ class Machine:
             currents[label] = coil.current
         return currents
 
-    def getCurrentsVec(self):
+    def getCurrentsVec(self, coils=None):
         """
         Returns an array of coil currents in Amps
         """
-        currents = np.zeros_like(self.current_dummy_vec)
+        if coils==None:
+            coils = self.coils
+
+        currents = np.zeros(len(coils))
         i = 0
-        for label, coil in self.coils:
+        for label, coil in coils:
             currents[i] = coil.current
             i += 1
         self.current_vec = currents
