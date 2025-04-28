@@ -78,8 +78,8 @@ def plotIOConstraints(control, axis=None, show=True):
 
     """
 
-    import matplotlib.pyplot as plt
     import matplotlib
+    import matplotlib.pyplot as plt
 
     cmap = matplotlib.cm.get_cmap("gnuplot")
 
