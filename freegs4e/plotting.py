@@ -80,7 +80,8 @@ def plotIOConstraints(control, axis=None, show=True):
 
     import matplotlib.pyplot as plt
     import matplotlib
-    cmap = matplotlib.cm.get_cmap('gnuplot')
+
+    cmap = matplotlib.cm.get_cmap("gnuplot")
 
     if axis is None:
         fig = plt.figure()
@@ -88,18 +89,28 @@ def plotIOConstraints(control, axis=None, show=True):
 
     # Locations of the X-points
     if control.null_points is not None:
-        axis.plot(control.null_points[0], control.null_points[1], "1", color='purple', markersize=10)
-        axis.plot([], [], "1", color='purple', markersize=10, label="Null-points")
+        axis.plot(
+            control.null_points[0],
+            control.null_points[1],
+            "1",
+            color="purple",
+            markersize=10,
+        )
+        axis.plot(
+            [], [], "1", color="purple", markersize=10, label="Null-points"
+        )
 
     # Isoflux surfaces
     if control.isoflux_set is not None:
         color = cmap(np.random.random())
-        for i,isoflux in enumerate(control.isoflux_set):
+        for i, isoflux in enumerate(control.isoflux_set):
             axis.plot(isoflux[0], isoflux[1], "+", color=color, markersize=10)
-            axis.plot([], [], "+", color=color, label=f"Isoflux_{i}", markersize=10)
+            axis.plot(
+                [], [], "+", color=color, label=f"Isoflux_{i}", markersize=10
+            )
 
     if show:
-        plt.legend(loc='upper right')
+        plt.legend(loc="upper right")
         plt.show()
 
     return axis

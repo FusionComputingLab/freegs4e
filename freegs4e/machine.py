@@ -140,7 +140,7 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             pgreen += multiplier * coil.createPsiGreens(R, Z)
         return pgreen
-    
+
     def createBrGreensVec(self, R, Z):
         """
         Calculate Br Greens functions
@@ -149,7 +149,7 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             pgreen += multiplier * coil.createBrGreensVec(R, Z)
         return pgreen
-    
+
     def createBzGreensVec(self, R, Z):
         """
         Calculate Bz Greens functions
@@ -602,13 +602,13 @@ class Solenoid:
         Calculate Greens functions
         """
         return self.controlPsi(R, Z)
-    
+
     def createBrGreensVec(self, R, Z):
         """
         Calculate Br Greens functions
         """
         return self.controlBr(R, Z)
-    
+
     def createBzGreensVec(self, R, Z):
         """
         Calculate Bz Greens functions
@@ -1110,7 +1110,7 @@ class Machine:
         and puts into arrays for each coil. This map can then be
         called at a later time, and quickly return the field
         """
-        if coils==None:
+        if coils == None:
             coils = self.coils
 
         pgreen = np.zeros([len(coils)] + list(np.shape(R)))
@@ -1119,13 +1119,13 @@ class Machine:
             pgreen[i] = coil.createPsiGreensVec(R, Z)
             i += 1
         return pgreen
-    
+
     def createBrGreensVec(self, R, Z, coils=None):
         """
         Pre-computes the Br Greens functions
-        and puts into arrays for each coil. 
+        and puts into arrays for each coil.
         """
-        if coils==None:
+        if coils == None:
             coils = self.coils
 
         pgreen = np.zeros([len(coils)] + list(np.shape(R)))
@@ -1134,13 +1134,13 @@ class Machine:
             pgreen[i] = coil.createBrGreensVec(R, Z)
             i += 1
         return pgreen
-    
+
     def createBzGreensVec(self, R, Z, coils=None):
         """
         Pre-computes the Br Greens functions
-        and puts into arrays for each coil. 
+        and puts into arrays for each coil.
         """
-        if coils==None:
+        if coils == None:
             coils = self.coils
 
         pgreen = np.zeros([len(coils)] + list(np.shape(R)))
@@ -1401,7 +1401,7 @@ class Machine:
         """
         Returns an array of coil currents in Amps
         """
-        if coils==None:
+        if coils == None:
             coils = self.coils
 
         currents = np.zeros(len(coils))

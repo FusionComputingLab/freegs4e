@@ -139,13 +139,13 @@ class Coil:
         calcPsiFromGreens()
         """
         return self.controlPsi(R, Z)
-    
+
     def createBrGreensVec(self, R, Z):
         """
         Calculate Br Greens functions
         """
         return self.controlBr(R, Z)
-    
+
     def createBzGreensVec(self, R, Z):
         """
         Calculate Bz Greens functions
