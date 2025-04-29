@@ -69,6 +69,53 @@ def plotConstraints(control, axis=None, show=True):
     return axis
 
 
+def plotIOConstraints(control, axis=None, show=True):
+    """
+    Plots constraints used for coil current control
+
+    axis     - Specify the axis on which to plot
+    show     - Call matplotlib.pyplot.show() before returning
+
+    """
+
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    cmap = matplotlib.cm.get_cmap("gnuplot")
+
+    if axis is None:
+        fig = plt.figure()
+        axis = fig.add_subplot(111)
+
+    # Locations of the X-points
+    if control.null_points is not None:
+        axis.plot(
+            control.null_points[0],
+            control.null_points[1],
+            "1",
+            color="purple",
+            markersize=10,
+        )
+        axis.plot(
+            [], [], "1", color="purple", markersize=10, label="Null-points"
+        )
+
+    # Isoflux surfaces
+    if control.isoflux_set is not None:
+        color = cmap(np.random.random())
+        for i, isoflux in enumerate(control.isoflux_set):
+            axis.plot(isoflux[0], isoflux[1], "+", color=color, markersize=10)
+            axis.plot(
+                [], [], "+", color=color, label=f"Isoflux_{i}", markersize=10
+            )
+
+    if show:
+        plt.legend(loc="upper right")
+        plt.show()
+
+    return axis
+
+
 def plotEquilibrium(
     eq, axis=None, show=True, oxpoints=True, wall=True, limiter=True
 ):
@@ -107,7 +154,7 @@ def plotEquilibrium(
             xpt = eq._profiles.xpt
 
             for r, z, _ in xpt:
-                axis.plot(r, z, "ro")
+                axis.plot(r, z, "rx")
             for r, z, _ in opt:
                 axis.plot(r, z, "gx")
 
@@ -142,10 +189,10 @@ def plotEquilibrium(
                     )
 
                 # Add legend
-                axis.plot([], [], "ro", label="X-points")
+                axis.plot([], [], "rx", label="X-points")
                 axis.plot([], [], "r", label="Separatrix")
             if opt is not []:
-                axis.plot([], [], "go", label="O-points")
+                axis.plot([], [], "gx", label="O-points")
 
     except:
         print(
