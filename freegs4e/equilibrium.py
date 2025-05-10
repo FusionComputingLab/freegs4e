@@ -839,12 +839,7 @@ class Equilibrium:
 
         return self._profiles.pressure(psinorm)
 
-    def separatrix(
-        self, 
-        ntheta=360, 
-        IQR_factor=2.0, 
-        verbose=False
-        ):
+    def separatrix(self, ntheta=360, IQR_factor=2.0, verbose=False):
         """
         Return (ntheta x 2) array of (R,Z) points on the last closed
         flux surface (plasma boundary), equally spaced in the geometric
@@ -853,7 +848,7 @@ class Equilibrium:
         Sometimes there may be spurious points far from the core plasma (due to
         open field lines), we exclude these by finding the minimum distance between points
         and then excluding those outside of some upper and lower bounds. These bounds can be
-        increased/decreased using IQR_factor. 
+        increased/decreased using IQR_factor.
 
         Parameters
         ----------
@@ -878,7 +873,9 @@ class Equilibrium:
         # compute pairwise distances using pdist
         dist_matrix = squareform(pdist(points))  # convert to square form
         # find minimum distances
-        min_dists = np.min(dist_matrix + 1e10 * np.eye(len(dist_matrix)), axis=0)
+        min_dists = np.min(
+            dist_matrix + 1e10 * np.eye(len(dist_matrix)), axis=0
+        )
 
         # calculate inter-quartlie ranges and bounds
         Q1 = np.percentile(min_dists, 25)
@@ -888,10 +885,12 @@ class Equilibrium:
         upper_bound = Q3 + IQR_factor * (Q3 - Q1)
 
         # identify outliers
-        outlier_indices = np.where((min_dists < lower_bound) | (min_dists > upper_bound))[0]
-        outliers = points[outlier_indices,:]
+        outlier_indices = np.where(
+            (min_dists < lower_bound) | (min_dists > upper_bound)
+        )[0]
+        outliers = points[outlier_indices, :]
 
-        # verbose 
+        # verbose
         if verbose:
             print("Outlier locations:", outliers)
 
