@@ -839,22 +839,30 @@ class Equilibrium:
 
         return self._profiles.pressure(psinorm)
 
-    def separatrix(self, ntheta=360, stdev=4):
+    def separatrix(
+        self, 
+        ntheta=360, 
+        IQR_factor=2.0, 
+        verbose=False
+        ):
         """
         Return (ntheta x 2) array of (R,Z) points on the last closed
         flux surface (plasma boundary), equally spaced in the geometric
         poloidal angle.
 
         Sometimes there may be spurious points far from the core plasma (due to
-        open field lines), we exclude these by setting an average threshold distance
-        between all the points (excluding those outside the threshold).
+        open field lines), we exclude these by finding the minimum distance between points
+        and then excluding those outside of some upper and lower bounds. These bounds can be
+        increased/decreased using IQR_factor. 
 
         Parameters
         ----------
         ntheta : int
             Number of points on the boundary to return.
-        stdev : float
-            Number of standard deviations after which outliers are excluded.
+        IQR_factor : float
+            Scaling factor used when exluding spurious points.
+        verbose : bool
+            Prints any outliers if True.
 
         Returns
         -------
@@ -869,17 +877,28 @@ class Equilibrium:
 
         # compute pairwise distances using pdist
         dist_matrix = squareform(pdist(points))  # convert to square form
-        mean_distances = np.mean(
-            dist_matrix, axis=1
-        )  # mean distance for each point
+        # find minimum distances
+        min_dists = np.min(dist_matrix + 1e10 * np.eye(len(dist_matrix)), axis=0)
 
-        # define a threshold (median + n * standard deviations)
-        threshold = np.median(mean_distances) + stdev * np.quantile(
-            dist_matrix.reshape(-1), q=0.8
-        )
+        # calculate inter-quartlie ranges and bounds
+        Q1 = np.percentile(min_dists, 25)
+        Q3 = np.percentile(min_dists, 75)
+
+        lower_bound = Q1 - IQR_factor * (Q3 - Q1)
+        upper_bound = Q3 + IQR_factor * (Q3 - Q1)
+
+        # identify outliers
+        outlier_indices = np.where((min_dists < lower_bound) | (min_dists > upper_bound))[0]
+        outliers = points[outlier_indices,:]
+
+        # verbose 
+        if verbose:
+            print("Outlier locations:", outliers)
 
         # filter points
-        filtered_points = points[mean_distances < threshold]
+        mask = np.full(len(min_dists), True)
+        mask[outlier_indices] = False
+        filtered_points = points[mask]
 
         return filtered_points
 
