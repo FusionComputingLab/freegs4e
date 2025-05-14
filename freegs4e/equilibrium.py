@@ -877,7 +877,7 @@ class Equilibrium:
             dist_matrix + 1e10 * np.eye(len(dist_matrix)), axis=0
         )
 
-        # calculate inter-quartlie ranges and bounds
+        # calculate inter-quartile ranges and bounds
         Q1 = np.percentile(min_dists, 25)
         Q3 = np.percentile(min_dists, 75)
 
