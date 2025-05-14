@@ -175,7 +175,7 @@ class Profile(object):
             # check correct sorting between psi_axis and psi_bndry
             if (self.psi_axis - psi_bndry) * self.Ip < 0:
                 raise ValueError(
-                    "Incorrect critical points! Likely due to not suitable psi_plasma"
+                    "Incorrect critical points! Likely due to unsuitable 'psi_plasma' guess."
                 )
             diverted_core_mask = critical.inside_mask(
                 R, Z, psi, opt, xpt, mask_outside_limiter, psi_bndry
@@ -205,9 +205,9 @@ class Profile(object):
                             self.edge_mask * alt_diverted_core_mask
                         )
                         if edge_pixels == 0:
-                            print(
-                                "Discarding 'primary' Xpoint! Please check final result"
-                            )
+                            # print(
+                            #     "Discarding 'primary' Xpoint! Please check final result"
+                            # )
                             xpt = xpt[1:]
                             psi_bndry = xpt[1, 2]
                             diverted_core_mask = alt_diverted_core_mask.copy()
