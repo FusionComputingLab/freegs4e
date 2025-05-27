@@ -2089,14 +2089,15 @@ class Equilibrium:
 
     def dr_sep(
         self,
+        Z_level=None,
         sign_flip=False,
     ):
         """
-        Computes the radial separation (on the inboard and outboard sides) at the midplane (Z = 0)
+        Computes the radial separation (on the inboard and outboard sides) at vertical position `Z_level`
         between flux surfaces passing through the lower and upper X-points.
 
         The inboard dr_sep is defined as the difference in R (radial position) between
-        the two flux surfaces intersecting Z = 0 on the inboard side (smaller R values),
+        the two flux surfaces intersecting `Z_level` on the inboard side (smaller R values),
         each corresponding to one of the X-points.
 
         Similarly, the outboard dr_sep is the radial separation of the same flux surfaces
@@ -2104,6 +2105,8 @@ class Equilibrium:
 
         Parameters
         ----------
+        Z_level : float
+            Vertical height at which to calculate dr_sep [m].
         sign_flip : bool
             By convention, the function assumes the first X-point corresponds to the lower
             X-point, and the second to the upper X-point. So for an upper single null plasma,
@@ -2116,6 +2119,10 @@ class Equilibrium:
             A list containing the inboard and outboard dr_sep values:
             [dr_sep_in, dr_sep_out].
         """
+
+        # check if Z position specified, else set to Zgeometric
+        if Z_level is None:
+            Z_level = self.Zgeometric()
 
         # extract required quantities
         psi_bndry = self.psi_bndry
@@ -2147,8 +2154,8 @@ class Equilibrium:
             psi_boundary_lines1.append(item)
 
         # use the shapely package to find where each psi_boundary_line intersects
-        # the Z = 0 line
-        R_limits = np.array([[self.Rmin, 0], [self.Rmax, 0]])
+        # the Z = Z_level line
+        R_limits = np.array([[self.Rmin, Z_level], [self.Rmax, Z_level]])
         R_line = sh.LineString(R_limits)
 
         # set of intersection points for the first flux surface
