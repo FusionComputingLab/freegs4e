@@ -157,9 +157,6 @@ class Equilibrium:
             nx, ny, generator, nlevels=1, ncycle=1, niter=2, direct=True
         )
 
-        # separatrix data not yet calculated
-        self._separatrix_data_flag = False
-
     def create_psi_plasma_default(
         self, adaptive_centre=False, gpars=(0.5, 0.5, 0, 2)
     ):
@@ -914,10 +911,8 @@ class Equilibrium:
             Area of the last closed flux surface (plasma boundary) [m^2].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return self._sep_area
 
@@ -934,10 +929,8 @@ class Equilibrium:
             Circumference of the last closed flux surface (plasma boundary) [m].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return self._sep_length
 
@@ -1241,10 +1234,8 @@ class Equilibrium:
             Geometric axis (R,Z) position [m].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return np.array(
             [
@@ -1296,10 +1287,8 @@ class Equilibrium:
             Minor radius of the plasma [m].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (self._sep_Rmax - self._sep_Rmin) / 2
 
@@ -1317,9 +1306,8 @@ class Equilibrium:
         """
 
         # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (self._sep_Rmax + self._sep_Rmin) / (
             self._sep_Rmax - self._sep_Rmin
@@ -1338,10 +1326,8 @@ class Equilibrium:
             Geometric elongation of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (self._sep_Zmax - self._sep_Zmin) / (
             self._sep_Rmax - self._sep_Rmin
@@ -1360,10 +1346,8 @@ class Equilibrium:
             Geometric elongation of the upper part of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (
             2
@@ -1384,10 +1368,8 @@ class Equilibrium:
             Geometric elongation of the lower part of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (
             2
@@ -1408,10 +1390,8 @@ class Equilibrium:
             Effective elongation of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1452,10 +1432,8 @@ class Equilibrium:
             Upper triangularity of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1475,10 +1453,8 @@ class Equilibrium:
             Lower triangularity of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1498,10 +1474,8 @@ class Equilibrium:
             Triangularity of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1531,10 +1505,8 @@ class Equilibrium:
             Lower inner squareness.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         # create shapely object for plasma core
         plasma_boundary = sh.Polygon(self.separatrix())
