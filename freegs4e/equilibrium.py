@@ -157,9 +157,6 @@ class Equilibrium:
             nx, ny, generator, nlevels=1, ncycle=1, niter=2, direct=True
         )
 
-        # separatrix data not yet calculated
-        self._separatrix_data_flag = False
-
     def create_psi_plasma_default(
         self, adaptive_centre=False, gpars=(0.5, 0.5, 0, 2)
     ):
@@ -839,22 +836,25 @@ class Equilibrium:
 
         return self._profiles.pressure(psinorm)
 
-    def separatrix(self, ntheta=360, stdev=4):
+    def separatrix(self, ntheta=360, IQR_factor=2.0, verbose=False):
         """
         Return (ntheta x 2) array of (R,Z) points on the last closed
         flux surface (plasma boundary), equally spaced in the geometric
         poloidal angle.
 
         Sometimes there may be spurious points far from the core plasma (due to
-        open field lines), we exclude these by setting an average threshold distance
-        between all the points (excluding those outside the threshold).
+        open field lines), we exclude these by finding the minimum distance between points
+        and then excluding those outside of some upper and lower bounds. These bounds can be
+        increased/decreased using IQR_factor.
 
         Parameters
         ----------
         ntheta : int
             Number of points on the boundary to return.
-        stdev : float
-            Number of standard deviations after which outliers are excluded.
+        IQR_factor : float
+            Scaling factor used when exluding spurious points.
+        verbose : bool
+            Prints any outliers if True.
 
         Returns
         -------
@@ -869,17 +869,32 @@ class Equilibrium:
 
         # compute pairwise distances using pdist
         dist_matrix = squareform(pdist(points))  # convert to square form
-        mean_distances = np.mean(
-            dist_matrix, axis=1
-        )  # mean distance for each point
-
-        # define a threshold (median + n * standard deviations)
-        threshold = np.median(mean_distances) + stdev * np.quantile(
-            dist_matrix.reshape(-1), q=0.8
+        # find minimum distances
+        min_dists = np.min(
+            dist_matrix + 1e10 * np.eye(len(dist_matrix)), axis=0
         )
 
+        # calculate inter-quartile ranges and bounds
+        Q1 = np.percentile(min_dists, 25)
+        Q3 = np.percentile(min_dists, 75)
+
+        lower_bound = Q1 - IQR_factor * (Q3 - Q1)
+        upper_bound = Q3 + IQR_factor * (Q3 - Q1)
+
+        # identify outliers
+        outlier_indices = np.where(
+            (min_dists < lower_bound) | (min_dists > upper_bound)
+        )[0]
+        outliers = points[outlier_indices, :]
+
+        # verbose
+        if verbose:
+            print("Outlier locations:", outliers)
+
         # filter points
-        filtered_points = points[mean_distances < threshold]
+        mask = np.full(len(min_dists), True)
+        mask[outlier_indices] = False
+        filtered_points = points[mask]
 
         return filtered_points
 
@@ -896,10 +911,8 @@ class Equilibrium:
             Area of the last closed flux surface (plasma boundary) [m^2].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return self._sep_area
 
@@ -916,10 +929,8 @@ class Equilibrium:
             Circumference of the last closed flux surface (plasma boundary) [m].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return self._sep_length
 
@@ -1123,13 +1134,15 @@ class Equilibrium:
         # find critical points
         opts, xpts = critical.find_critical(self.R, self.Z, self.psi())
 
-        # find closest O-point to the geometric axis
-        geom_axis = self.geometricAxis()[0:2]
-        o_point_ind = np.argmin(
-            np.sum((opts[:, 0:2] - geom_axis) ** 2, axis=1)
-        )
+        return opts[0, :]
 
-        return opts[o_point_ind, :]
+        # # find closest O-point to the geometric axis
+        # geom_axis = self.geometricAxis()[0:2]
+        # o_point_ind = np.argmin(
+        #     np.sum((opts[:, 0:2] - geom_axis) ** 2, axis=1)
+        # )
+
+        # return opts[o_point_ind, :]
 
     def Rcurrent(self):
         """
@@ -1221,10 +1234,8 @@ class Equilibrium:
             Geometric axis (R,Z) position [m].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return np.array(
             [
@@ -1276,10 +1287,8 @@ class Equilibrium:
             Minor radius of the plasma [m].
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (self._sep_Rmax - self._sep_Rmin) / 2
 
@@ -1297,9 +1306,8 @@ class Equilibrium:
         """
 
         # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (self._sep_Rmax + self._sep_Rmin) / (
             self._sep_Rmax - self._sep_Rmin
@@ -1318,10 +1326,8 @@ class Equilibrium:
             Geometric elongation of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (self._sep_Zmax - self._sep_Zmin) / (
             self._sep_Rmax - self._sep_Rmin
@@ -1340,10 +1346,8 @@ class Equilibrium:
             Geometric elongation of the upper part of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (
             2
@@ -1364,10 +1368,8 @@ class Equilibrium:
             Geometric elongation of the lower part of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         return (
             2
@@ -1388,10 +1390,8 @@ class Equilibrium:
             Effective elongation of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1432,10 +1432,8 @@ class Equilibrium:
             Upper triangularity of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1455,10 +1453,8 @@ class Equilibrium:
             Lower triangularity of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1478,10 +1474,8 @@ class Equilibrium:
             Triangularity of the plasma.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
@@ -1511,10 +1505,8 @@ class Equilibrium:
             Lower inner squareness.
         """
 
-        # check if metrics are already calculated
-        if self._separatrix_data_flag is False:
-            self._separatrix_metrics()  # call function
-            self._separatrix_data_flag = True  # update flag
+        # calculate separatrix metrics
+        self._separatrix_metrics()
 
         # create shapely object for plasma core
         plasma_boundary = sh.Polygon(self.separatrix())
@@ -2069,14 +2061,15 @@ class Equilibrium:
 
     def dr_sep(
         self,
+        Z_level=None,
         sign_flip=False,
     ):
         """
-        Computes the radial separation (on the inboard and outboard sides) at the midplane (Z = 0)
+        Computes the radial separation (on the inboard and outboard sides) at vertical position `Z_level`
         between flux surfaces passing through the lower and upper X-points.
 
         The inboard dr_sep is defined as the difference in R (radial position) between
-        the two flux surfaces intersecting Z = 0 on the inboard side (smaller R values),
+        the two flux surfaces intersecting `Z_level` on the inboard side (smaller R values),
         each corresponding to one of the X-points.
 
         Similarly, the outboard dr_sep is the radial separation of the same flux surfaces
@@ -2084,6 +2077,8 @@ class Equilibrium:
 
         Parameters
         ----------
+        Z_level : float
+            Vertical height at which to calculate dr_sep [m].
         sign_flip : bool
             By convention, the function assumes the first X-point corresponds to the lower
             X-point, and the second to the upper X-point. So for an upper single null plasma,
@@ -2096,6 +2091,10 @@ class Equilibrium:
             A list containing the inboard and outboard dr_sep values:
             [dr_sep_in, dr_sep_out].
         """
+
+        # check if Z position specified, else set to Zgeometric
+        if Z_level is None:
+            Z_level = self.Zgeometric()
 
         # extract required quantities
         psi_bndry = self.psi_bndry
@@ -2127,8 +2126,8 @@ class Equilibrium:
             psi_boundary_lines1.append(item)
 
         # use the shapely package to find where each psi_boundary_line intersects
-        # the Z = 0 line
-        R_limits = np.array([[self.Rmin, 0], [self.Rmax, 0]])
+        # the Z = Z_level line
+        R_limits = np.array([[self.Rmin, Z_level], [self.Rmax, Z_level]])
         R_line = sh.LineString(R_limits)
 
         # set of intersection points for the first flux surface
