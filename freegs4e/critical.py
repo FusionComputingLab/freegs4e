@@ -410,9 +410,11 @@ def scan_for_crit(R, Z, psi):
                     )  # + 0.5*(fRR*delta_R**2 + fZZ*delta_Z**2 + fRZ*delta_R*delta_Z)
                     crpoint = (R0 + delta_R, Z0 + delta_Z, est_psi)
                     if det > 0.0:
-                        opoint = [crpoint] + opoint
+                        # opoint = [crpoint] + opoint
+                        opoint.append(crpoint)
                     else:
-                        xpoint = [crpoint] + xpoint
+                        # xpoint = [crpoint] + xpoint
+                        xpoint.append(crpoint)
 
     xpoint = np.array(xpoint)
     opoint = np.array(opoint)
@@ -859,6 +861,10 @@ def inside_mask(
     if use_geom:
         # cure flooding
         mask = mask * geom_inside_mask(R, Z, opoint, xpoint)
+        # apply geometric masking criterion to second Xpoint if close to double null
+        if len(xpoint>1):
+            if np.abs((xpoint[0,2]-xpoint[1,2])/(opoint[0,2]-xpoint[0,2]))<.1:
+                mask = mask * geom_inside_mask(R, Z, opoint, xpoint[1:])
     return mask
 
 
