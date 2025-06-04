@@ -862,8 +862,14 @@ def inside_mask(
         # cure flooding
         mask = mask * geom_inside_mask(R, Z, opoint, xpoint)
         # apply geometric masking criterion to second Xpoint if close to double null
-        if len(xpoint>1):
-            if np.abs((xpoint[0,2]-xpoint[1,2])/(opoint[0,2]-xpoint[0,2]))<.1:
+        if len(xpoint > 1):
+            if (
+                np.abs(
+                    (xpoint[0, 2] - xpoint[1, 2])
+                    / (opoint[0, 2] - xpoint[0, 2])
+                )
+                < 0.1
+            ):
                 mask = mask * geom_inside_mask(R, Z, opoint, xpoint[1:])
     return mask
 

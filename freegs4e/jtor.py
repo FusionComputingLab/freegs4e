@@ -353,7 +353,7 @@ class ConstrainBetapIp(Profile):
         IR = (
             np.sum(jtorshape * R / self.Raxis) * dR * dZ
         )  # romb(romb(jtorshape * R / self.Raxis)) * dR * dZ
-        if IR==0:
+        if IR == 0:
             raise ValueError("No core mask!")
         I_R = (
             np.sum(jtorshape * self.Raxis / R) * dR * dZ
