@@ -1438,7 +1438,7 @@ class Equilibrium:
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
 
-        return (R_geom - self._sep_RZmin) / R_minor
+        return (R_geom - self._sep_RZmax) / R_minor
 
     def triangularity_lower(self):
         """
@@ -1459,7 +1459,7 @@ class Equilibrium:
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
 
-        return (R_geom - self._sep_RZmax) / R_minor
+        return (R_geom - self._sep_RZmin) / R_minor
 
     def triangularity(self):
         """
@@ -1480,7 +1480,7 @@ class Equilibrium:
         R_geom = (self._sep_Rmax + self._sep_Rmin) / 2
         R_minor = (self._sep_Rmax - self._sep_Rmin) / 2
 
-        return (R_geom - (self._sep_RZmax + self._sep_RZmin) / 2) / R_minor
+        return (R_geom - 0.5 * (self._sep_RZmax + self._sep_RZmin)) / R_minor
 
     def squareness(self):
         """
