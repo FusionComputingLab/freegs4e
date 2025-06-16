@@ -27,7 +27,7 @@ import numpy as np
 import shapely as sh
 from numpy import array, exp, linspace, meshgrid, pi
 from scipy import interpolate
-from scipy.integrate import cumulative_trapezoid, romb
+from scipy.integrate import cumulative_trapezoid
 from scipy.spatial.distance import pdist, squareform
 
 from . import critical, machine, multigrid, polygons  # multigrid solver
@@ -370,7 +370,7 @@ class Equilibrium:
             raise e
 
         # integrate volume in 2D
-        return romb(romb(dV))
+        return np.sum(dV)
 
     def plasmaBr(self, R, Z):
         """
@@ -1652,8 +1652,6 @@ class Equilibrium:
 
             li = ( (integral() dl * integral(Bpol) dV) / (mu0 * Ip * V) )^2,
 
-        This definition is also used in the Fiesta equilibrium code.
-
         where:
          - L = length of the separatrix (LCFS).
          - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
@@ -1662,6 +1660,7 @@ class Equilibrium:
          - Ip = total plasma current.
          - V = total plasma volume.
 
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
 
         Parameters
         ----------
@@ -1685,8 +1684,8 @@ class Equilibrium:
             )
             raise e
 
-        # integrate B_pol over the plasma volume
-        integral = romb(romb(self.Bpol(self.R, self.Z) * dV))
+        # first order integral
+        integral = np.sum(self.Bpol(self.R, self.Z) * dV)
 
         return (
             (self.separatrix_length() * integral)
@@ -1699,8 +1698,6 @@ class Equilibrium:
 
             li = ( integral(Bpol**2) dV ) / ( ( integral(Bpol) dl / L )**2 * V),
 
-        This definition is also used in the Fiesta equilibrium code.
-
         where:
          - L = length of the separatrix (LCFS).
          - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
@@ -1710,6 +1707,7 @@ class Equilibrium:
          - Ip = total plasma current.
          - V = total plasma volume.
 
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
 
         Parameters
         ----------
@@ -1719,9 +1717,6 @@ class Equilibrium:
         float
             Plasma internal inductance.
         """
-
-        # extract Bpol
-        B_pol = self.Bpol(self.R, self.Z)
 
         # volume elements
         dV = 2.0 * np.pi * self.R * self.dR * self.dZ
@@ -1737,7 +1732,7 @@ class Equilibrium:
             raise e
 
         # integrate B_pol squared over the volume
-        integral_Bpol_2 = romb(romb((B_pol**2) * dV))
+        integral_Bpol_2 = np.sum((self.Bpol(self.R, self.Z) ** 2) * dV)
 
         # integrate B_pol over the LCFS
 
@@ -1763,9 +1758,7 @@ class Equilibrium:
         """
         Calculates plasma internal inductance according to:
 
-            li = (2 * integral(Bpol^2) dV) / (mu0 * Ip^2 * R_geom),
-
-        This definition is also used in the Fiesta equilibrium code.
+            li = (2 * integral(Bpol^2) dV) / (mu0^2 * Ip^2 * R_geom),
 
         where:
          - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
@@ -1773,6 +1766,8 @@ class Equilibrium:
          - mu0 = magnetic permeability in vacuum.
          - Ip = total plasma current.
          - R_geom = radial coords of geometric axis.
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
 
         Parameters
         ----------
@@ -1782,9 +1777,6 @@ class Equilibrium:
         float
             Plasma internal inductance.
         """
-
-        # extract Bpol squared
-        B_pol_2 = self.Bpol(self.R, self.Z) ** 2
 
         # volume elements
         dV = 2.0 * np.pi * self.R * self.dR * self.dZ
@@ -1800,7 +1792,7 @@ class Equilibrium:
             raise e
 
         # integrate B_pol squared over the volume
-        integral = romb(romb(B_pol_2 * dV))
+        integral = np.sum((self.Bpol(self.R, self.Z) ** 2) * dV)
 
         return (
             2
@@ -1812,7 +1804,7 @@ class Equilibrium:
         """
         Calculates plasma internal inductance according to:
 
-            li = (2 * integral(Bpol^2) dV) / (mu0 * Ip^2 * R_mag),
+            li = (2 * integral(Bpol^2) dV) / (mu0^2 * Ip^2 * R_mag),
 
         where:
          - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
@@ -1831,9 +1823,6 @@ class Equilibrium:
             Plasma internal inductance.
         """
 
-        # extract Bpol squared
-        B_pol_2 = self.Bpol(self.R, self.Z) ** 2
-
         # volume elements
         dV = 2.0 * np.pi * self.R * self.dR * self.dZ
 
@@ -1848,7 +1837,7 @@ class Equilibrium:
             raise e
 
         # integrate B_pol squared over the volume
-        integral = romb(romb(B_pol_2 * dV))
+        integral = np.sum((self.Bpol(self.R, self.Z) ** 2) * dV)
 
         return (
             2
@@ -1860,7 +1849,7 @@ class Equilibrium:
         """
         Calculates plasma internal inductance according to:
 
-            li = [(2 * integral(Bpol^2) dV) / (mu0 * Ip^2 * R_geom)] * [(1 + geom_elon^2)/(2 * eff_elon)],
+            li = [(2 * integral(Bpol^2) dV) / (mu0^2 * Ip^2 * R_geom)] * [(1 + geom_elon^2)/(2 * eff_elon)],
 
         where:
          - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
@@ -1880,9 +1869,6 @@ class Equilibrium:
             Plasma internal inductance.
         """
 
-        # extract Bpol squared
-        B_pol_2 = self.Bpol(self.R, self.Z) ** 2
-
         # volume elements
         dV = 2.0 * np.pi * self.R * self.dR * self.dZ
 
@@ -1897,7 +1883,7 @@ class Equilibrium:
             raise e
 
         # integrate B_pol squared over the volume
-        integral = romb(romb(B_pol_2 * dV))
+        integral = np.sum((self.Bpol(self.R, self.Z) ** 2) * dV)
 
         return (
             (2 * integral)
@@ -1907,52 +1893,7 @@ class Equilibrium:
             / (2.0 * self.effectiveElongation())
         )
 
-    def poloidalBeta(self):
-        """
-        Calculates poloidal beta from the following definition:
-
-            betap = 2 * mu0 * integral(p) dV / integral(Bpol^2) dV,
-
-        where:
-         - mu0 = magnetic permeability in vacuum.
-         - p = plasma pressure (at each (R,Z)).
-         - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
-         - dV = volume element
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        float
-            Returns the poloidal beta value.
-        """
-
-        # extract Bpol squared
-        B_pol_2 = self.Bpol(self.R, self.Z) ** 2
-
-        # volume elements
-        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
-
-        # plasma pressure
-        pressure = self.pressure(self.psiNRZ(self.R, self.Z))
-
-        # mask with the core plasma
-        try:
-            dV *= self._profiles.limiter_core_mask
-        except AttributeError as e:
-            print(e)
-            warnings.warn(
-                "The core mask is not in place. You need to solve for the equilibrium first!"
-            )
-            raise e
-
-        pressure_integral = romb(romb(pressure * dV))
-        field_integral_pol = romb(romb(B_pol_2 * dV))
-
-        return 2 * mu0 * pressure_integral / field_integral_pol
-
-    def poloidalBeta2(self):
+    def poloidalBeta1(self):
         """
         Calculates poloidal beta from the following definition:
 
@@ -1963,6 +1904,8 @@ class Equilibrium:
          - Ip = total plasma current.
          - p = plasma pressure (at each (R,Z)).
 
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
+
         Parameters
         ----------
 
@@ -1971,9 +1914,6 @@ class Equilibrium:
         float
             Returns the poloidal beta value.
         """
-
-        # plasma pressure
-        pressure = self.pressure(self.psiNRZ(self.R, self.Z))
 
         # volume elements
         dV = self.dR * self.dZ
@@ -1988,7 +1928,9 @@ class Equilibrium:
             )
             raise e
 
-        pressure_integral = romb(romb(pressure * dV))
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
 
         return (
             ((8.0 * pi) / mu0)
@@ -1996,17 +1938,169 @@ class Equilibrium:
             / (self.plasmaCurrent() ** 2)
         )
 
-    def toroidalBeta(self):
+    def poloidalBeta2(self):
+        """
+        Calculates poloidal beta from the following definition:
+
+            betap = 2 * mu0 * integral(p) dV / integral(Bpol^2) dV,
+
+        where:
+         - mu0 = magnetic permeability in vacuum.
+         - p = plasma pressure (at each (R,Z)).
+         - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
+         - dV = volume element
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            Returns the poloidal beta value.
+        """
+
+        # volume elements
+        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
+
+        # mask with the core plasma
+        try:
+            dV *= self._profiles.limiter_core_mask
+        except AttributeError as e:
+            print(e)
+            warnings.warn(
+                "The core mask is not in place. You need to solve for the equilibrium first!"
+            )
+            raise e
+
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
+        field_integral_pol = np.sum((self.Bpol(self.R, self.Z) ** 2) * dV)
+
+        return 2 * mu0 * pressure_integral / field_integral_pol
+
+    def poloidalBeta3(self):
+        """
+        Calculates poloidal beta from the following definition:
+
+            betap = ( integral(p) dV / V) / (integral(Bpol) dl / L)**2,
+
+        where:
+         - p = pressure field.
+         - dV = volume element.
+         - V = total plasma volume.
+         - Bpol(R,Z) = poloidal magnetic field (at each (R,Z)).
+         - dl = line element (along LCFS).
+         - L = length of the separatrix (LCFS).
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            Returns the poloidal beta value.
+        """
+
+        # volume elements
+        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
+
+        # mask with the core plasma
+        try:
+            dV *= self._profiles.limiter_core_mask
+        except AttributeError as e:
+            print(e)
+            warnings.warn(
+                "The core mask is not in place. You need to solve for the equilibrium first!"
+            )
+            raise e
+
+        # pressure integral
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
+
+        # integrate B_pol over the LCFS
+        # find arc length
+        separatrix = self.separatrix()
+        dl = np.sqrt(
+            np.diff(separatrix[:, 0]) ** 2 + np.diff(separatrix[:, 1]) ** 2
+        )  # element-wise arc length
+        l = np.concatenate(([0], np.cumsum(dl)))  # cumulative arc length
+
+        # evaluate Bp on the LCFS
+        Bp = self.Bpol(separatrix[:, 0], separatrix[:, 1])
+
+        # integrate
+        integral_Bpol_lcfs = np.trapz(Bp, l)
+
+        return (pressure_integral / self.plasmaVolume()) / (
+            integral_Bpol_lcfs / self.separatrix_length()
+        ) ** 2
+
+    def poloidalBeta4(self):
+        """
+        Calculates poloidal beta from the following definition:
+
+            betap = 4 * integral(p) dV / (mu0 * Ip^2 * integral(R) dV / V),
+
+        where:
+         - p = plasma pressure (at each (R,Z)).
+         - dV = volume element
+         - mu0 = magnetic permeability in vacuum.
+         - Ip = total plasma current.
+         - R = radial grid points.
+         - V = total plasma volume.
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            Returns the poloidal beta value.
+        """
+
+        # volume elements
+        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
+
+        # mask with the core plasma
+        try:
+            dV *= self._profiles.limiter_core_mask
+        except AttributeError as e:
+            print(e)
+            warnings.warn(
+                "The core mask is not in place. You need to solve for the equilibrium first!"
+            )
+            raise e
+
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
+        R_avg = np.sum(self.R * dV) / self.plasmaVolume()
+
+        return (4 * pressure_integral) / (
+            mu0 * self.plasmaCurrent() ** 2 * R_avg
+        )
+
+    def toroidalBeta1(self):
         """
         Calculates a toroidal beta from the following definition:
 
-            betat = 2 * mu0 * integral(p) dV / Btor(R_geom,Z_geom)^2 integral() dV,
+            betat = 2 * mu0 * integral(p) dR dZ / integral(Btor**2) dR dZ,
 
         where:
          - mu0 = magnetic permeability in vacuum.
          - p = plasma pressure (at each (R,Z)).
          - Btor(R,Z) = toroidal magnetic field (at an (R,Z)).
-         - dV = volume element.
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
 
         Parameters
         ----------
@@ -2017,15 +2111,14 @@ class Equilibrium:
             Returns the toroidal beta value.
         """
 
-        # volume elements
-        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
-
-        # plasma pressure
+        # plasma pressure and toroidal fields
         pressure = self.pressure(self.psiNRZ(self.R, self.Z))
+        Btor2 = self.Btor(self.R, self.Z) ** 2
 
         # mask with the core plasma
         try:
-            dV *= self._profiles.limiter_core_mask
+            pressure *= self._profiles.limiter_core_mask
+            Btor2 *= self._profiles.limiter_core_mask
         except AttributeError as e:
             print(e)
             warnings.warn(
@@ -2033,26 +2126,24 @@ class Equilibrium:
             )
             raise e
 
-        pressure_integral = romb(romb(pressure * dV))
+        pressure_integral = np.sum(pressure * self.dR * self.dZ)
+        Btor2_integral = np.sum(Btor2 * self.dR * self.dZ)
 
-        # extract Btor squared
-        B_tor_2 = self.Btor(self.Rgeometric(), self.Zgeometric()) ** 2
-
-        field_integral_tor = romb(romb(B_tor_2 * dV))
-
-        return 2 * mu0 * pressure_integral / field_integral_tor
+        return 2 * mu0 * pressure_integral / Btor2_integral
 
     def toroidalBeta2(self):
         """
         Calculates a toroidal beta from the following definition:
 
-            betat = 2 * mu0 * integral(p) dV / integral(Btor^2) dV,
+            betat = 2 * mu0 * integral(p) dV / integral(Btor**2) dV,
 
         where:
          - mu0 = magnetic permeability in vacuum.
          - p = plasma pressure (at each (R,Z)).
-         - Btor(R,Z) = toroidal magnetic field (at each (R,Z)).
-         - dV = volume element.
+         - dV = volume element
+         - Btor(R,Z) = toroidal magnetic field (at an (R,Z)).
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
 
         Parameters
         ----------
@@ -2063,14 +2154,8 @@ class Equilibrium:
             Returns the toroidal beta value.
         """
 
-        # extract Btor squared
-        B_tor_2 = self.Btor(self.R, self.Z) ** 2
-
         # volume elements
         dV = 2.0 * np.pi * self.R * self.dR * self.dZ
-
-        # plasma pressure
-        pressure = self.pressure(self.psiNRZ(self.R, self.Z))
 
         # mask with the core plasma
         try:
@@ -2082,11 +2167,106 @@ class Equilibrium:
             )
             raise e
 
-        pressure_integral = romb(romb(pressure * dV))
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
+        Btor2_int = np.sum((self.Btor(self.R, self.Z) ** 2) * dV)
 
-        field_integral_tor = romb(romb(B_tor_2 * dV))
+        return 2 * mu0 * pressure_integral / Btor2_int
 
-        return 2 * mu0 * pressure_integral / field_integral_tor
+    def toroidalBeta3(self):
+        """
+        Calculates a toroidal beta from the following definition:
+
+            betat = 2 * mu0 * integral(p) dV / integral(Btor**2 + Bpol**2) dV,
+
+        where:
+         - mu0 = magnetic permeability in vacuum.
+         - p = plasma pressure (at each (R,Z)).
+         - dV = volume element
+         - Btor(R,Z) = toroidal magnetic field (at an (R,Z)).
+         - Bpol(R,Z) = poloidal magnetic field (at an (R,Z)).
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            Returns the toroidal beta value.
+        """
+
+        # volume elements
+        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
+
+        # mask with the core plasma
+        try:
+            dV *= self._profiles.limiter_core_mask
+        except AttributeError as e:
+            print(e)
+            warnings.warn(
+                "The core mask is not in place. You need to solve for the equilibrium first!"
+            )
+            raise e
+
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
+        B_int = np.sum(
+            (self.Btor(self.R, self.Z) ** 2 + self.Bpol(self.R, self.Z) ** 2)
+            * dV
+        )
+
+        return 2 * mu0 * pressure_integral / B_int
+
+    def toroidalBeta4(self):
+        """
+        Calculates a toroidal beta from the following definition:
+
+            betat = 2 * mu0 * integral(p) dV / Btor_vac(R_geom,Z_geom)^2 * V,
+
+        where:
+         - mu0 = magnetic permeability in vacuum.
+         - p = plasma pressure (at each (R,Z)).
+         - dV = volume element.
+         - Btor_vac(R,Z) = vacuum toroidal magnetic field (at an (R,Z)).
+         - (Rgeom,Zgeom) = geoemtric axis.
+         - V = total plasma volume.
+
+        This definition is also used in the Fiesta/Topeol equilibrium codes.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            Returns the toroidal beta value.
+        """
+
+        # volume elements
+        dV = 2.0 * np.pi * self.R * self.dR * self.dZ
+
+        # mask with the core plasma
+        try:
+            dV *= self._profiles.limiter_core_mask
+        except AttributeError as e:
+            print(e)
+            warnings.warn(
+                "The core mask is not in place. You need to solve for the equilibrium first!"
+            )
+            raise e
+
+        pressure_integral = np.sum(
+            self.pressure(self.psiNRZ(self.R, self.Z)) * dV
+        )
+        Btor_vac = self.fvac() / self.Rgeometric()
+
+        return (
+            2 * mu0 * pressure_integral / (Btor_vac**2 * self.plasmaVolume())
+        )
 
     def normalised_total_Beta(self):
         """
@@ -2413,7 +2593,7 @@ class Equilibrium:
         self._updatePlasmaPsi(plasma_psi)
 
         # update plasma current
-        self._current = romb(romb(Jtor)) * self.dR * self.dZ
+        self._current = np.sum(Jtor) * self.dR * self.dZ
 
     def _updatePlasmaPsi(self, plasma_psi):
         """
