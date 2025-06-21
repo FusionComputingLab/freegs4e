@@ -2272,7 +2272,7 @@ class Equilibrium:
         """
         Calculates the total beta from the following definition:
 
-            normalised_total_Beta = ( (1 / poloidalBeta2) + (1/toroidalBeta) )^(-1).
+            normalised_total_Beta = ( (1 / poloidalBeta1) + (1/toroidalBeta1) )^(-1).
 
         Parameters
         ----------
@@ -2285,7 +2285,7 @@ class Equilibrium:
         """
 
         return 1.0 / (
-            (1.0 / self.poloidalBeta()) + (1.0 / self.toroidalBeta())
+            (1.0 / self.poloidalBeta1()) + (1.0 / self.toroidalBeta1())
         )
 
     def strikepoints(
