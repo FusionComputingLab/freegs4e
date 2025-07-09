@@ -564,7 +564,7 @@ class Equilibrium:
             The total poloidal flux due to the plasma and the coils [Webers/2pi].
         """
 
-        return self.plasma_psi + self.tokamak.calcPsiFromGreens(self._pgreen)
+        return self.plasma_psi + self.tokamak.getPsitokamak(self._vgreen)
 
     def psiRZ(self, R, Z):
         """
