@@ -184,12 +184,14 @@ class Profile(object):
             if hasattr(self, "diverted_core_mask"):
                 if self.diverted_core_mask is not None:
                     previous_core_size = np.sum(self.diverted_core_mask)
+                    skipped_xpts = 0
                     # check size change
                     check = (
                         np.sum(diverted_core_mask) / previous_core_size < 0.5
                     )
+                    # check there's more candidates
                     check *= len(xpt) > 1
-                    if check:
+                    while check:
                         # try using second xpt as primary xpt
                         alt_diverted_core_mask = critical.inside_mask(
                             R,
@@ -205,12 +207,17 @@ class Profile(object):
                             self.edge_mask * alt_diverted_core_mask
                         )
                         if edge_pixels == 0:
-                            # print(
-                            #     "Discarding 'primary' Xpoint! Please check final result"
-                            # )
+                            # the candidate is valid
                             xpt = xpt[1:]
                             psi_bndry = xpt[1, 2]
                             diverted_core_mask = alt_diverted_core_mask.copy()
+
+                            # check if there could be better candidates
+                            check = (
+                                np.sum(diverted_core_mask) / previous_core_size < 0.5
+                            )
+                            # check there's more candidates
+                            check *= len(xpt) > 1
         else:
             # No X-points
             psi_bndry = psi[0, 0]
@@ -394,6 +401,9 @@ class ConstrainBetapIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        if hasattr(self, "Beta0") is False:
+            raise ValueError("The pprime profile cannot be normalised. " \
+            "Please first calculate Jtor for this profile. ")
 
         return self.L * self.Beta0 / self.Raxis * shape
 
@@ -414,6 +424,9 @@ class ConstrainBetapIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        if hasattr(self, "Beta0") is False:
+            raise ValueError("The ffprime profile cannot be normalised. " \
+            "Please first calculate Jtor for this profile. ")
 
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
@@ -581,11 +594,13 @@ class ConstrainPaxisIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-        if hasattr(self, "L") is False:
-            self.L = 1
-            print(
-                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
-            )
+        if hasattr(self, "Beta0") is False:
+            raise ValueError("The pprime profile cannot be normalised. " \
+            "Please first calculate Jtor for this profile. ")
+            # self.L = 1
+            # print(
+            #     "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            # )
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -605,11 +620,9 @@ class ConstrainPaxisIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-        if hasattr(self, "L") is False:
-            self.L = 1
-            print(
-                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
-            )
+        if hasattr(self, "Beta0") is False:
+            raise ValueError("The ffprime profile cannot be normalised. " \
+            "Please first calculate Jtor for this profile. ")
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
@@ -755,11 +768,9 @@ class Fiesta_Topeol(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-        if hasattr(self, "L") is False:
-            self.L = 1
-            print(
-                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
-            )
+        if hasattr(self, "Beta0") is False:
+            raise ValueError("The pprime profile cannot be normalised. " \
+            "Please first calculate Jtor for this profile. ")
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -779,11 +790,9 @@ class Fiesta_Topeol(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-        if hasattr(self, "L") is False:
-            self.L = 1
-            print(
-                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
-            )
+        if hasattr(self, "Beta0") is False:
+            raise ValueError("The ffprime profile cannot be normalised. " \
+            "Please first calculate Jtor for this profile. ")
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
@@ -883,6 +892,22 @@ class Lao85(Profile):
             self.beta = np.concatenate((self.beta, [-np.sum(self.beta)]))
         self.beta_exp = np.arange(0, len(self.beta))
 
+
+    def build_dJtorpsin1(self,):
+        # calculate dJ/dpsi_n at psi_n=1
+        pprime_term = self.alpha[1:, np.newaxis, np.newaxis] * self.alpha_exp[1:, np.newaxis, np.newaxis]
+        pprime_term = np.sum(pprime_term, axis=0)
+        pprime_term *= self.eqR / self.Raxis
+
+        ffprime_term = self.beta[1:, np.newaxis, np.newaxis] * self.beta_exp[1:, np.newaxis, np.newaxis]
+        ffprime_term = np.sum(ffprime_term, axis=0)
+        ffprime_term *= self.Raxis / self.eqR
+        ffprime_term /= mu0
+
+        self.dJtorpsin1 = pprime_term + ffprime_term
+
+
+
     def Jtor_part2(
         self,
         R,
@@ -968,16 +993,38 @@ class Lao85(Profile):
         # sum together
         Jtor = pprime_term + ffprime_term
 
-        # put to zero all current outside the LCFS
-        Jtor *= psi > psi_bndry
+        # calculate dJ/dpsi_n
+        pprime_term = (
+            psi_norm[np.newaxis, :, :]
+            ** self.alpha_exp[:-1, np.newaxis, np.newaxis]
+        )
+        pprime_term *= self.alpha[1:, np.newaxis, np.newaxis] * self.alpha_exp[1:, np.newaxis, np.newaxis]
+        pprime_term = np.sum(pprime_term, axis=0)
+        pprime_term *= R / self.Raxis
 
-        Jtor *= self.Ip * Jtor > 0
+        ffprime_term = (
+            psi_norm[np.newaxis, :, :]
+            ** self.beta_exp[:-1, np.newaxis, np.newaxis]
+        )
+        ffprime_term *= self.beta[1:, np.newaxis, np.newaxis] * self.beta_exp[1:, np.newaxis, np.newaxis]
+        ffprime_term = np.sum(ffprime_term, axis=0)
+        ffprime_term *= self.Raxis / R
+        ffprime_term /= mu0
+
+        dJtordpsin = pprime_term + ffprime_term
+        self.dJtordpsi = dJtordpsin/(psi_axis - psi_bndry)
+        
+        # put to zero all current outside the LCFS
+        # Jtor *= psi > psi_bndry
+
+        # Jtor *= self.Ip * Jtor > 0
 
         if torefine:
             return Jtor
 
         if mask is not None:
             Jtor *= mask
+            self.dJtordpsi *= mask
 
         # if Ip normalisation is required, do it
         if self.Ip_logic:
@@ -989,6 +1036,8 @@ class Lao85(Profile):
                 )
             L = self.Ip / (jtorIp * dR * dZ)
             Jtor = L * Jtor
+            self.dJtordpsi *= L
+
         else:
             L = 1.0
 
@@ -1024,11 +1073,10 @@ class Lao85(Profile):
             list(np.shape(self.alpha)) + [1] * len(shape_pn)
         )
         shape = np.sum(shape, axis=0)
-        if hasattr(self, "L") is False:
-            self.L = 1
-            print(
-                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
-            )
+        if self.Ip_logic is True:
+            if hasattr(self, "L") is False:
+                raise ValueError("The pprime profile cannot be normalised. " \
+                                "Please first calculate Jtor for this profile. ")
         return self.L * shape / self.Raxis
 
     def ffprime(self, pn):
@@ -1057,11 +1105,10 @@ class Lao85(Profile):
             list(np.shape(self.beta)) + [1] * len(shape_pn)
         )
         shape = np.sum(shape, axis=0)
-        if hasattr(self, "L") is False:
-            self.L = 1
-            print(
-                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
-            )
+        if self.Ip_logic is True:
+            if hasattr(self, "L") is False:
+                raise ValueError("The ffprime profile cannot be normalised. " \
+                                "Please first calculate Jtor for this profile. ")
         return self.L * shape * self.Raxis
 
     def pressure(self, pn):
