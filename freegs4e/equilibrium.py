@@ -29,6 +29,7 @@ from numpy import array, exp, linspace, meshgrid, pi
 from scipy import interpolate
 from scipy.integrate import cumulative_trapezoid
 from scipy.spatial.distance import pdist, squareform
+from scipy.interpolate import CubicSpline
 
 from . import critical, machine, multigrid, polygons  # multigrid solver
 from .boundary import fixedBoundary, freeBoundary  # finds free-boundary
@@ -1508,6 +1509,23 @@ class Equilibrium:
         # calculate separatrix metrics
         self._separatrix_metrics()
 
+        # # calculate core separatrix
+        # core_boundary = self.separatrix()
+        
+        # t = np.linspace(0, 1, core_boundary.shape[0]+1)
+
+        # # periodic spline interpolation
+        # R_spline = CubicSpline(t, np.append(core_boundary[:,0],core_boundary[0,0]), bc_type='periodic')
+        # Z_spline = CubicSpline(t, np.append(core_boundary[:,1],core_boundary[0,1]), bc_type='periodic')
+
+        # # evaluate on a finer grid
+        # t_fine = np.linspace(0, 1, 1000)
+        # R_fine = R_spline(t_fine)
+        # Z_fine = Z_spline(t_fine)
+
+        # # use shapely to define polygon of core plasma
+        # plasma_boundary = sh.Polygon(np.vstack((R_fine,Z_fine)).T)
+
         # create shapely object for plasma core
         plasma_boundary = sh.Polygon(self.separatrix())
 
@@ -2685,29 +2703,79 @@ class Equilibrium:
             Modifies eq object in place.
         """
 
+        # # calculate core separatrix
+        # core_boundary = self.separatrix()
+
+        # # min/max values on core boundary
+        # Rmin = np.min(core_boundary[:, 0])
+        # Rmax = np.max(core_boundary[:, 0])
+        # Zmin = np.min(core_boundary[:, 1])
+        # Zmax = np.max(core_boundary[:, 1])
+
+        # # find corresponding indices for these
+        # ZRmin_arg = np.argmin(core_boundary[:, 0])
+        # ZRmax_arg = np.argmax(core_boundary[:, 0])
+        # RZmin_arg = np.argmin(core_boundary[:, 1])
+        # RZmax_arg = np.argmax(core_boundary[:, 1])
+
+        # # use indices to find corresponding coords
+        # ZRmin = core_boundary[ZRmin_arg, 1]
+        # ZRmax = core_boundary[ZRmax_arg, 1]
+        # RZmin = core_boundary[RZmin_arg, 0]
+        # RZmax = core_boundary[RZmax_arg, 0]
+
+        # # use shapely to define polygon of core plasma
+        # plasma_polygon = sh.Polygon(core_boundary)
+        # area = plasma_polygon.area
+        # length = plasma_polygon.length
+
+        # self._sep_Rmin = Rmin
+        # self._sep_Rmax = Rmax
+        # self._sep_Zmin = Zmin
+        # self._sep_Zmax = Zmax
+        # self._sep_ZRmin = ZRmin
+        # self._sep_ZRmax = ZRmax
+        # self._sep_RZmin = RZmin
+        # self._sep_RZmax = RZmax
+        # self._sep_area = area
+        # self._sep_length = length
+
+
+
         # calculate core separatrix
         core_boundary = self.separatrix()
+        
+        t = np.linspace(0, 1, core_boundary.shape[0]+1)
+
+        # periodic spline interpolation
+        R_spline = CubicSpline(t, np.append(core_boundary[:,0],core_boundary[0,0]), bc_type='periodic')
+        Z_spline = CubicSpline(t, np.append(core_boundary[:,1],core_boundary[0,1]), bc_type='periodic')
+
+        # evaluate on a finer grid
+        t_fine = np.linspace(0, 1, 1000)
+        R_fine = R_spline(t_fine)
+        Z_fine = Z_spline(t_fine)
 
         # min/max values on core boundary
-        Rmin = np.min(core_boundary[:, 0])
-        Rmax = np.max(core_boundary[:, 0])
-        Zmin = np.min(core_boundary[:, 1])
-        Zmax = np.max(core_boundary[:, 1])
+        Rmin = np.min(R_fine)
+        Rmax = np.max(R_fine)
+        Zmin = np.min(Z_fine)
+        Zmax = np.max(Z_fine)
 
         # find corresponding indices for these
-        ZRmin_arg = np.argmin(core_boundary[:, 0])
-        ZRmax_arg = np.argmax(core_boundary[:, 0])
-        RZmin_arg = np.argmin(core_boundary[:, 1])
-        RZmax_arg = np.argmax(core_boundary[:, 1])
+        ZRmin_arg = np.argmin(R_fine)
+        ZRmax_arg = np.argmax(R_fine)
+        RZmin_arg = np.argmin(Z_fine)
+        RZmax_arg = np.argmax(Z_fine)
 
         # use indices to find corresponding coords
-        ZRmin = core_boundary[ZRmin_arg, 1]
-        ZRmax = core_boundary[ZRmax_arg, 1]
-        RZmin = core_boundary[RZmin_arg, 0]
-        RZmax = core_boundary[RZmax_arg, 0]
+        ZRmin = Z_fine[ZRmin_arg]
+        ZRmax = Z_fine[ZRmax_arg]
+        RZmin = R_fine[RZmin_arg]
+        RZmax = R_fine[RZmax_arg]
 
         # use shapely to define polygon of core plasma
-        plasma_polygon = sh.Polygon(core_boundary)
+        plasma_polygon = sh.Polygon(np.vstack((R_fine,Z_fine)).T)
         area = plasma_polygon.area
         length = plasma_polygon.length
 
@@ -2721,7 +2789,6 @@ class Equilibrium:
         self._sep_RZmax = RZmax
         self._sep_area = area
         self._sep_length = length
-
 
 def ellipse_points(R0, Z0, A, B, N=360):
     """
