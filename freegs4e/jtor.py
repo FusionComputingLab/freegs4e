@@ -163,22 +163,54 @@ class Profile(object):
             R, Z, psi, self.mask_inside_limiter, self.Ip
         )
 
-        # find core plasma mask (using psi_bndry)
+        # find core plasma mask (using user-defined psi_bndry)
         if psi_bndry is not None:
             diverted_core_mask = critical.inside_mask(
                 R, Z, psi, opt, xpt, mask_outside_limiter, psi_bndry
             )
         elif len(xpt) > 0:
+            # find core plasma mask using psi_bndry from xpt
             psi_bndry = xpt[0][2]
             self.psi_axis = opt[0][2]
             # check correct sorting between psi_axis and psi_bndry
             if (self.psi_axis - psi_bndry) * self.Ip < 0:
                 raise ValueError(
-                    "Incorrect critical points! Likely due to not suitable psi_plasma"
+                    "Incorrect critical points! Likely due to unsuitable 'psi_plasma' guess."
                 )
             diverted_core_mask = critical.inside_mask(
                 R, Z, psi, opt, xpt, mask_outside_limiter, psi_bndry
             )
+            # check of any abrupt change of size in the diverted core mask
+            if hasattr(self, "diverted_core_mask"):
+                if self.diverted_core_mask is not None:
+                    previous_core_size = np.sum(self.diverted_core_mask)
+                    # check size change
+                    check = (
+                        np.sum(diverted_core_mask) / previous_core_size < 0.5
+                    )
+                    check *= len(xpt) > 1
+                    if check:
+                        # try using second xpt as primary xpt
+                        alt_diverted_core_mask = critical.inside_mask(
+                            R,
+                            Z,
+                            psi,
+                            opt,
+                            xpt[1:],
+                            mask_outside_limiter,
+                            xpt[1, 2],
+                        )
+                        # check the alternative Xpoint gives rise to a valid core
+                        edge_pixels = np.sum(
+                            self.edge_mask * alt_diverted_core_mask
+                        )
+                        if edge_pixels == 0:
+                            # print(
+                            #     "Discarding 'primary' Xpoint! Please check final result"
+                            # )
+                            xpt = xpt[1:]
+                            psi_bndry = xpt[1, 2]
+                            diverted_core_mask = alt_diverted_core_mask.copy()
         else:
             # No X-points
             psi_bndry = psi[0, 0]
@@ -547,7 +579,11 @@ class ConstrainPaxisIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -567,7 +603,11 @@ class ConstrainPaxisIp(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
@@ -713,7 +753,11 @@ class Fiesta_Topeol(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -733,7 +777,11 @@ class Fiesta_Topeol(Profile):
         """
 
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
-
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
@@ -786,9 +834,9 @@ class Lao85(Profile):
         beta : list or np.array
             Polynomial coefficients for ffprime.
         alpha_logic : bool
-            If True, include the n_{P+1} term (see Jtor2).
+            If True, include the n_{P+1} term to ensure pprime(1)=0 (see Jtor2).
         beta_logic : bool
-            If True, include the n_{F+1} term (see Jtor2).
+            If True, include the n_{F+1} term to ensure ffprime(1)=0 (see Jtor2).
         Raxis : float
             Radial scaling parameter (non-negative).
         Ip_logic : bool
@@ -833,7 +881,17 @@ class Lao85(Profile):
             self.beta = np.concatenate((self.beta, [-np.sum(self.beta)]))
         self.beta_exp = np.arange(0, len(self.beta))
 
-    def Jtor_part2(self, R, Z, psi, psi_axis, psi_bndry, mask):
+    def Jtor_part2(
+        self,
+        R,
+        Z,
+        psi,
+        psi_axis,
+        psi_bndry,
+        mask,
+        torefine=False,
+        refineR=None,
+    ):
         """
         Second part of the calculation that will use the explicit
         parameterisation of the chosen profile function to calculate Jtor.
@@ -864,6 +922,7 @@ class Lao85(Profile):
         mask : np.ndarray
             Mask of points inside the last closed flux surface.
 
+
         Returns
         -------
         np.array
@@ -878,6 +937,9 @@ class Lao85(Profile):
         # grid sizes
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
+
+        if torefine:
+            R = 1.0 * refineR
 
         # calculate normalised psi
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
@@ -904,7 +966,14 @@ class Lao85(Profile):
         # sum together
         Jtor = pprime_term + ffprime_term
 
-        # if there is a masking function, use it
+        # put to zero all current outside the LCFS
+        Jtor *= psi > psi_bndry
+
+        Jtor *= self.Ip * Jtor > 0
+
+        if torefine:
+            return Jtor
+
         if mask is not None:
             Jtor *= mask
 
@@ -953,6 +1022,11 @@ class Lao85(Profile):
             list(np.shape(self.alpha)) + [1] * len(shape_pn)
         )
         shape = np.sum(shape, axis=0)
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         return self.L * shape / self.Raxis
 
     def ffprime(self, pn):
@@ -981,6 +1055,11 @@ class Lao85(Profile):
             list(np.shape(self.beta)) + [1] * len(shape_pn)
         )
         shape = np.sum(shape, axis=0)
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         return self.L * shape * self.Raxis
 
     def pressure(self, pn):
@@ -1021,6 +1100,11 @@ class Lao85(Profile):
             ),
             axis=0,
         )
+        if hasattr(self, "L") is False:
+            self.L = 1
+            print(
+                "This is using self.L=1, which is likely not appropriate. Please calculate Jtor first to ensure the correct normalization."
+            )
         pressure = self.L * norm_pressure * (self.psi_axis - self.psi_bndry)
         return pressure
 
