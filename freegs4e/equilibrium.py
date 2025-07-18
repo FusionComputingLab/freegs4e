@@ -2104,12 +2104,11 @@ class Equilibrium:
         psi_norm_levels = self.psiN_1D(N)
 
         # compute enclosed integral
-        F_Q1 = np.zeros(len(psi_levels))
-        F_Q2 = np.zeros(len(psi_levels))
+        F_Q1 = np.zeros(N)
+        F_Q2 = np.zeros(N)
+        dV = 2 * np.pi * self.R / grad_psi
 
-        dV = 2 * np.pi * self.R * (1 / grad_psi)  # volume element
-
-        for i, psi_k in enumerate(self.psi_1D(N)):
+        for i, psi_k in enumerate(psi_levels):
             mask = self.psi() <= psi_k  # region inside the flux surface
 
             # apply core plasma mask
