@@ -564,7 +564,7 @@ class Equilibrium:
             The total poloidal flux due to the plasma and the coils [Webers/2pi].
         """
 
-        return self.plasma_psi + self.tokamak.calcPsiFromGreens(self._pgreen)
+        return self.plasma_psi + self.tokamak.getPsitokamak(self._vgreen)
 
     def psiRZ(self, R, Z):
         """
@@ -2272,7 +2272,7 @@ class Equilibrium:
         """
         Calculates the total beta from the following definition:
 
-            normalised_total_Beta = ( (1 / poloidalBeta2) + (1/toroidalBeta) )^(-1).
+            normalised_total_Beta = ( (1 / poloidalBeta1) + (1/toroidalBeta1) )^(-1).
 
         Parameters
         ----------
@@ -2285,7 +2285,7 @@ class Equilibrium:
         """
 
         return 1.0 / (
-            (1.0 / self.poloidalBeta()) + (1.0 / self.toroidalBeta())
+            (1.0 / self.poloidalBeta1()) + (1.0 / self.toroidalBeta1())
         )
 
     def strikepoints(
