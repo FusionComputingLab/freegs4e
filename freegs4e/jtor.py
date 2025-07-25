@@ -23,6 +23,7 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from numpy import clip, pi, reshape, sqrt, zeros
 from scipy.integrate import quad, romb
+from scipy.interpolate import UnivariateSpline
 from scipy.special import beta as spbeta
 from scipy.special import betainc as spbinc
 
@@ -1200,152 +1201,6 @@ class Lao85(Profile):
         return self._fvac
 
 
-class ProfilesPprimeFfprime:
-    """
-    Class describing generic toroidal current density profile formulations.
-    """
-
-    def __init__(
-        self, pprime_func, ffprime_func, fvac, p_func=None, f_func=None
-    ):
-        """
-        Initialise the class.
-
-        Parameters
-        ----------
-        pprime_func : function
-            A function which returns p'(ψ_n) at given normalised flux.
-        ffprime_func : function
-            A function which returns FF'(ψ_n) at given normalised flux.
-        fvac : float
-            Vacuum toroidal field strength (f = R*B_tor) [T].
-        p_func : function
-            A function which returns p(ψ_n) at given normalised flux.
-        f_func : function
-            A function which returns F(ψ_n) at given normalised flux.
-        """
-
-        # set parameters for later use
-        self.pprime = pprime_func
-        self.ffprime = ffprime_func
-        self.p_func = p_func
-        self.f_func = f_func
-        self._fvac = fvac
-
-    def Jtor(self, R, Z, psi, psi_bndry=None):
-        """
-        Function that directly calculates Jtor:
-
-            Jtor(ψ, R, Z) = R * p'(ψ) + FF'(ψ) / (R * mu0).
-
-        Parameters
-        ----------
-        R : np.ndarray
-            Radial coordinates of the grid points.
-        Z : np.ndarray
-            Vertical coordinates of the grid points.
-        psi : np.ndarray
-            Total poloidal field flux at each grid point [Webers/2pi].
-        psi_bndry : float, optional
-            Value of the poloidal field flux at the boundary of the plasma (last closed
-            flux surface).
-
-        Returns
-        -------
-        np.array
-            Toroidal current density on the computational grid [A/m^2].
-        """
-
-        # find O- and X-points from equilibrium
-        opt, xpt = critical.find_critical(R, Z, psi)
-        if not opt:
-            raise ValueError("No O-points found!")
-        psi_axis = opt[0][2]
-
-        # generate core mask if needed
-        if psi_bndry is not None:
-            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
-        elif xpt:
-            psi_bndry = xpt[0][2]
-            mask = critical.core_mask(R, Z, psi, opt, xpt)
-        else:
-            # No X-points
-            psi_bndry = psi[0, 0]
-            mask = None
-
-        # calculate normalised psi
-        psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.0)
-
-        # evaluate Jtor
-        Jtor = R * self.pprime(psi_norm) + self.ffprime(psi_norm) / (R * mu0)
-
-        # mask if needed
-        if mask is not None:
-            Jtor *= mask
-
-        return Jtor
-
-    def pressure(self, psinorm):
-        """
-        Calculate the 1D pressure profile in the plasma (vs. the normalised
-        poloidal flux) by integrating the pprime profile.
-
-        Parameters
-        ----------
-        psinorm : np.array
-            Array of normalised psi values between 0 and 1.
-
-        Returns
-        -------
-        np.array
-            The computed pressure values at each normalised psi value.
-        """
-
-        # if a pressure function exists then use it
-        if self.p_func is not None:
-            return self.p_func(psinorm)
-
-        # if not, use base class to integrate
-        return super(ProfilesPprimeFfprime, self).pressure(psinorm)
-
-    def fpol(self, psinorm):
-        """
-        Calculate the 1D toroidal magnetic profile in the plasma (vs. the normalised
-        poloidal flux) by integrating the ffprime profile (ffprime = 0.5*d/dpsi(f^2)).
-
-        Parameters
-        ----------
-        psinorm : np.array
-            Array of normalised psi values between 0 and 1.
-
-        Returns
-        -------
-        np.array
-            The computed F values at each normalised psi value.
-        """
-
-        # if an F function exists then use it
-        if self.f_func is not None:
-            return self.f_func(psinorm)
-
-        # if not, use base class to integrate
-        return super(ProfilesPprimeFfprime, self).fpol(psinorm)
-
-    def fvac(self):
-        """
-        Return the vaccum field parameter fvac = R*Btor.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        float
-            The vaccum field parameter fvac = R*Btor.
-        """
-        return self._fvac
-
-
 class TensionSpline(Profile):
     """
     Class describing the toroidal current density profile formulation that uses
@@ -1641,3 +1496,331 @@ class TensionSpline(Profile):
             return f.reshape(size)
         else:
             return f
+
+
+class GeneralPprimeFFprime(Profile):
+    """
+    Class describing the general toroidal current density profile formulation:
+
+    Jtor(ψ, R, Z) = R * p'(ψ) + FF'(ψ) / (R * mu0).
+
+    """
+
+    def __init__(
+        self,
+        Ip,
+        fvac,
+        psi_n,
+        pprime_data=None,
+        ffprime_data=None,
+        p_data=None,
+        f_data=None,
+        Raxis=1,
+        Ip_logic=True,
+    ):
+        """
+        Initialise the class.
+
+        Parameters
+        ----------
+        Ip : float
+            Total plasma current [A].
+        fvac : float
+            Vacuum toroidal field strength (f = R*B_tor) [T].
+        psi_n : np.array
+            A 1D array of normalised poloidal flux values, corresponding to the data in pprime_data, ffprime_data,
+            p_data, and f_data.
+        pprime_data : np.array
+            A 1D array of dp/dpsi_n (p is pressure) values at each value of normalised flux in psi_n.
+        ffprime_data : np.array
+            A 1D array of fdf/dpsi_n (f is the toroidal magnetic field) values at each value of normalised flux in psi_n.
+        p_data : np.array
+            A 1D array of p (p is pressure) values at each value of normalised flux in psi_n.
+        f_data : np.array
+            A 1D array of f (f is the toroidal magnetic field) values at each value of normalised flux in psi_n.
+        Raxis : float
+            Radial scaling parameter (non-negative).
+        Ip_logic : bool
+            If True, entire profile is re-normalised to satisfy Ip identically.
+        """
+
+        # set parameters for later use
+        self.Ip = Ip
+        self._fvac = fvac
+        self.psi_n = psi_n
+        self.pprime_data = pprime_data
+        self.ffprime_data = ffprime_data
+        self.p_data = p_data
+        self.f_data = f_data
+        self.Raxis = Raxis
+        self.Ip_logic = Ip_logic
+        if self.Ip_logic is False:
+            self.L = 1  # no normalisation in this case
+
+        # initialise profile ready for calculation
+        self.initialize_profile()
+
+        # parameter to indicate that this is coming from FreeGS4E
+        self.fast = True
+
+    def initialize_profile(self):
+        """
+        Set up the attributes in the class ready for Jtor calculations.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+
+        # interpolate the p data
+        self.pprime_func = None
+        self.p_func = None
+
+        if self.pprime_data is not None:
+            self.pprime_func = UnivariateSpline(self.psi_n, self.pprime_data)
+
+        if self.p_data is not None:
+            self.p_func = UnivariateSpline(self.psi_n, self.p_data)
+
+        # if pprime_func still not provided, use p_func derivative, else throw error
+        if self.pprime_func is None and self.p_func is not None:
+            self.pprime_func = self.p_func.derivative(n=1)
+        elif self.pprime_func is None and self.p_func is None:
+            raise ValueError(
+                "Need to provide either 'pprime_data' or 'p_data'"
+            )
+
+        # interpolate the f data
+        self.ffprime_func = None
+        self.f_func = None
+
+        if self.ffprime_data is not None:
+            self.ffprime_func = UnivariateSpline(self.psi_n, self.ffprime_data)
+
+        if self.f_data is not None:
+            self.f_func = UnivariateSpline(self.psi_n, self.f_data)
+
+        # if ffprime_func still not provided, use f_func derivative, else throw error
+        if self.ffprime_func is None and self.f_func is not None:
+            fprime_func = self.f_func.derivative(n=1)
+            self.ffprime_func = lambda x: self.f_func(x) * fprime_func(x)
+        elif self.ffprime_func is None and self.f_func is None:
+            raise ValueError(
+                "Need to provide either 'ffprime_data' or 'f_data'"
+            )
+
+    def Jtor_part2(
+        self,
+        R,
+        Z,
+        psi,
+        psi_axis,
+        psi_bndry,
+        mask,
+        torefine=False,
+        refineR=None,
+    ):
+        """
+        Second part of the calculation that will use the interpolated profile
+        functions to calculate Jtor.
+
+        This is given by:
+            Jtor(ψ, R, Z) = L * [ (R / Raxis) * p'(ψ) + (Raxis / R) * FF'(ψ) / mu0 ],
+
+        where
+            p'(ψ) = pprime_func(ψ)
+
+            FF'(ψ) = ffprime_func(ψ)
+
+        and note ψ here is the normalised psi.
+
+        Parameters
+        ----------
+        R : np.ndarray
+            Radial coordinates of the grid points.
+        Z : np.ndarray
+            Vertical coordinates of the grid points.
+        psi : np.ndarray
+            Total poloidal field flux at each grid point [Webers/2pi].
+        psi_axis : float
+            Value of the poloidal field flux at the magnetic axis of the plasma.
+        psi_bndry : float
+            Value of the poloidal field flux at the boundary of the plasma (last closed
+            flux surface).
+        mask : np.ndarray
+            Mask of points inside the last closed flux surface.
+
+
+        Returns
+        -------
+        np.array
+            Toroidal current density on the computational grid [A/m^2].
+        """
+
+        # set flux on boundary
+        if psi_bndry is None:
+            psi_bndry = psi[0, 0]
+        self.psi_bndry = psi_bndry
+
+        # grid sizes
+        dR = R[1, 0] - R[0, 0]
+        dZ = Z[0, 1] - Z[0, 0]
+
+        if torefine:
+            R = 1.0 * refineR
+
+        # calculate normalised psi
+        psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
+        psi_norm = np.clip(psi_norm, 0.0, 1.0)
+
+        # calculate the p' and FF' profiles
+        pprime_term = self.pprime_func(psi_norm)
+        pprime_term *= R / self.Raxis
+
+        ffprime_term = self.ffprime_func(psi_norm)
+        ffprime_term *= self.Raxis / R
+        ffprime_term /= mu0
+
+        # sum together
+        Jtor = pprime_term + ffprime_term
+
+        if torefine:
+            return Jtor
+
+        # put to zero all current outside the LCFS
+        if mask is not None:
+            Jtor *= mask
+
+        # if Ip normalisation is required, do it
+        if self.Ip_logic:
+            jtorIp = np.sum(Jtor)
+            if jtorIp == 0:
+                self.problem_psi = psi
+                raise ValueError(
+                    "Total plasma current is zero! Cannot renormalise."
+                )
+            L = self.Ip / (jtorIp * dR * dZ)
+            Jtor = L * Jtor
+        else:
+            L = 1.0
+
+        # store parameters
+        self.jtor = Jtor.copy()
+        self.L = L
+
+        return self.jtor
+
+    def pprime(self, pn):
+        """
+        Calculate the 1D pprime (dp/dpsi) profile in the plasma (vs. the
+        normalised poloidal flux).
+
+        Parameters
+        ----------
+        pn : np.array
+            Array of normalised psi values between 0 and 1.
+
+        Returns
+        -------
+        np.array
+            The computed pprime values at each normalised psi value.
+        """
+
+        pn_ = np.clip(np.array(pn), 0, 1)
+
+        if self.Ip_logic:
+            if hasattr(self, "L") is False:
+                raise ValueError(
+                    "The pprime profile cannot be normalised. "
+                    "Please first calculate Jtor for this profile. "
+                )
+        return self.L * self.pprime_func(pn_) / self.Raxis
+
+    def ffprime(self, pn):
+        """
+        Calculate the 1D ffprime (FdF/dpsi) profile in the plasma (vs. the
+        normalised poloidal flux).
+
+        Parameters
+        ----------
+        pn : np.array
+            Array of normalised psi values between 0 and 1.
+
+        Returns
+        -------
+        np.array
+            The computed ffprime values at each normalised psi value.
+        """
+
+        pn_ = np.clip(np.array(pn), 0, 1)
+
+        if self.Ip_logic:
+            if hasattr(self, "L") is False:
+                raise ValueError(
+                    "The ffprime profile cannot be normalised. "
+                    "Please first calculate Jtor for this profile. "
+                )
+        return self.L * self.ffprime_func(pn_) / self.Raxis
+
+    def pressure(self, pn):
+        """
+        Calculate the 1D pressure profile in the plasma (vs. the normalised
+        poloidal flux).
+
+        Parameters
+        ----------
+        pn : np.array
+            Array of normalised psi values between 0 and 1.
+
+        Returns
+        -------
+        np.array
+            The computed pressure values at each normalised psi value.
+        """
+
+        pn_ = np.clip(np.array(pn), 0, 1)
+
+        if self.p_func is not None:
+            return self.p_func(pn_)
+        else:
+            return super(GeneralPprimeFfprime, self).pressure(pn_)
+
+    def fpol(self, pn):
+        """
+        Calculate the 1D toroidal magnetic profile in the plasma (vs. the normalised
+        poloidal flux).
+
+        Parameters
+        ----------
+        pn : np.array
+            Array of normalised psi values between 0 and 1.
+
+        Returns
+        -------
+        np.array
+            The computed toroidal magnetic field values at each normalised psi value.
+        """
+
+        pn_ = np.clip(np.array(pn), 0, 1)
+
+        if self.f_func is not None:
+            return self.f_func(pn_)
+        else:
+            return super(GeneralPprimeFfprime, self).fpol(pn_)
+
+    def fvac(self):
+        """
+        Return the vaccum field parameter fvac = R*Btor.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        float
+            The vaccum field parameter fvac = R*Btor.
+        """
+        return self._fvac
