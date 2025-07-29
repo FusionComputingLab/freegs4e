@@ -3,16 +3,16 @@
 
 FreeGS4E is a package forked from [FreeGS](https://github.com/freegs-plasma/freegs) (v0.6.1), which has the capability to solve the static inverse free-boundary Grad-Shafranov problem for plasma equilibria in tokamak devices.
 
-Its intended usage is as an underlying solver for the dynamic (time-dependent) free-boundary equilibrium solver FreeGSNKE.
+Its intended usage is as an underlying solver for the dynamic (time-dependent) free-boundary equilibrium solver [FreeGSNKE](https://github.com/FusionComputingLab/freegsnke).
 
 The addtion and removal of certain features within FreeGS, as well as some performance optimisation, were neccesary to enable this and so FreeGS4E has now diverged significantly from original FreeGS codebase.
 
-Therefore, FreeGS4E is **not intended to be a drop in replacement solver for FreeGS** but rather is designed for use explicitly **within** FreeGSNKE.
+Therefore, FreeGS4E is **not intended to be a drop in replacement solver for FreeGS** but rather is designed for use explicitly **within** [FreeGSNKE](https://github.com/FusionComputingLab/freegsnke).
 
 
 ## Installation
 
-Given FreeGS4E is not a standalone equilibrium solver, we recommend following the installation instructions for FreeGSNKE (which will install FreeGS4E automatically). 
+Given FreeGS4E is not a standalone equilibrium solver, we recommend following the [installation instructions for FreeGSNKE](https://docs.freegsnke.com/#installation) (which will install FreeGS4E automatically). 
 
 If you would, however, like to contribute to FreeGS4E directly, please see the installation instructions in the section on contributing below.
 
