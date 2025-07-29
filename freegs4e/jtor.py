@@ -52,13 +52,6 @@ class Profile(object):
             The computed pressure values at each normalised psi value.
         """
 
-        # if a single value
-        if not hasattr(psinorm, "shape"):
-            # integrate
-            val, _ = quad(self.pprime, psinorm, 1.0)
-            # convert from integral in normalised psi to integral in psi
-            # return val * (self.psi_axis - self.psi_bndry)
-
         # to store psi and integral values
         pvals = reshape(psinorm, -1)
         ovals = reshape(zeros(psinorm.shape), -1)
@@ -71,7 +64,7 @@ class Profile(object):
             val, _ = quad(self.pprime, pvals[i], 1.0)
 
             # convert from integral in normalised psi to integral in psi
-            # val *= self.psi_axis - self.psi_bndry
+            val *= self.psi_axis - self.psi_bndry
             ovals[i] = val
 
         # pressure at the edge is zero so no need for constant of integration
@@ -99,7 +92,7 @@ class Profile(object):
             # integrate
             val, _ = quad(self.ffprime, psinorm, 1.0)
             # convert from integral in normalised psi to integral in psi
-            # val *= self.psi_axis - self.psi_bndry
+            val *= self.psi_axis - self.psi_bndry
 
             # ffprime = 0.5*d/dpsi(f^2)
             # apply boundary condition at psinorm=1 val = fvac**2
@@ -116,7 +109,7 @@ class Profile(object):
             val, _ = quad(self.ffprime, pvals[i], 1.0)
 
             # convert from integral in normalised psi to integral in psi
-            # val *= self.psi_axis - self.psi_bndry
+            val *= self.psi_axis - self.psi_bndry
 
             # ffprime = 0.5*d/dpsi(f^2)
             # apply boundary condition at psinorm=1 val = fvac**2
