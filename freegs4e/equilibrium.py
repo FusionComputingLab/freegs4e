@@ -2541,6 +2541,97 @@ class Equilibrium:
 
         return [dr_sep_in, dr_sep_out]
 
+    def flux_averaged_jtor(
+        self,
+        f,
+        psi_n=None,
+    ):
+        """
+        Calculates the flux averaged value of a 2D scalar field f on a (normalised) flux surface
+        of psi (denotes by psi_n) within the last closed flux surface according to:
+
+            < f >(psi_n) = integral_{psi_n} (f/B_pol) dl /  integral_{psi_n} (1/B_pol) dl,
+
+        where:
+            - f(R,Z) = 2D scalar field function (e.g. jtor).
+            - psi_n = value of normalised flux at which to evaluate line integrals.
+            - Bpol(R,Z) = 2D scalar poloidal magnetic field function.
+            - dl = parameterised line element (distance) along the flux surface.
+
+        This definition was taken from https://www.mdpi.com/2571-6182/7/4/45.
+
+        Parameters
+        ----------
+        f(R,Z) : function
+            2D scalar function that is to be flux averaged. Must be able to take in arrays of
+            (R,Z) coordinates.
+        psi_n : float or np.array, optional
+            Range of normalised flux values to average on (each element must be 0 < psi_n(i) < 1). One
+            value returned for each element in psi_n.
+
+        Returns
+        -------
+        flux_averaged_quantity : float or np.array
+            The flux averaged quantity evaluated at each value in psi_n.
+        psi_n : float or np.array
+            The values of psi_n used to calculate each value in flux_averaged_quantity (may be different
+            to the input psi_n if the input array had values outside [0,1]).
+
+        """
+
+        # cannot solve for psi_n = 0 or 1, so clip
+        if psi_n is None:
+            psi_n = np.linspace(0.001, 0.999, 65)
+        else:
+            psi_n = np.clip(psi_n, 0.001, 0.999)
+
+        # extract normalised psi, masking outside limiter
+        masked_psi = np.ma.array(
+            self.psiNRZ(R=self.R, Z=self.Z), mask=self.mask_outside_limiter
+        )
+        flux_averaged_quantity = np.zeros(len(psi_n))
+
+        for i, val in enumerate(psi_n):
+
+            # find contour object for flux value
+            cs = plt.contour(self.R, self.Z, masked_psi, levels=[val])
+            plt.close()  # this isn't the most elegant but we don't need the plot itself
+
+            # for each item in the contour object there's a list of points in (r,z) (i.e. a curve)
+            psi_boundary_lines = []
+            for item in cs.allsegs[0]:
+                psi_boundary_lines.append(item)
+
+            # find the flux surface closest to the magnetic axis
+            mag_axis = self.magneticAxis()[0:2]
+            min_distances = [
+                np.min(np.linalg.norm(line - mag_axis, axis=1))
+                for line in psi_boundary_lines
+            ]
+            closest_index = np.argmin(min_distances)
+            flux_surface = psi_boundary_lines[closest_index]
+
+            # do the line integral around the flux surface
+            dl = np.sqrt(
+                np.diff(flux_surface[:, 0]) ** 2
+                + np.diff(flux_surface[:, 1]) ** 2
+            )  # element-wise arc length
+            l = np.concatenate(([0], np.cumsum(dl)))  # cumulative arc length
+
+            # evaluate 1/Bp on the flux surface
+            Bp_inv = 1 / self.Bpol(flux_surface[:, 0], flux_surface[:, 1])
+
+            # evaluate f on the flux surface
+            f_on_flux_surf = f(flux_surface[:, 0], flux_surface[:, 1])
+
+            # integrate with trapezoidal rule
+            integral_f_inv_Bpol = np.trapz(f_on_flux_surf * Bp_inv, l)
+            integral_inv_Bpol = np.trapz(Bp_inv, l)
+
+            flux_averaged_quantity[i] = integral_f_inv_Bpol / integral_inv_Bpol
+
+        return flux_averaged_quantity, psi_n
+
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
         This is a legacy function that can be used to solve for the plasma equilibrium. It
