@@ -2541,7 +2541,7 @@ class Equilibrium:
 
         return [dr_sep_in, dr_sep_out]
 
-    def flux_averaged_jtor(
+    def flux_averaged_function(
         self,
         f,
         psi_n=None,
@@ -2581,16 +2581,16 @@ class Equilibrium:
 
         # cannot solve for psi_n = 0 or 1, so clip
         if psi_n is None:
-            psi_n = np.linspace(0.001, 0.999, 65)
+            psi_n = np.linspace(0.01, 0.99, 65)
         else:
-            psi_n = np.clip(psi_n, 0.001, 0.999)
+            psi_n = np.clip(psi_n, 0.01, 0.99)
 
         # extract normalised psi, masking outside limiter
         masked_psi = np.ma.array(
             self.psiNRZ(R=self.R, Z=self.Z), mask=self.mask_outside_limiter
         )
-        flux_averaged_quantity = np.zeros(len(psi_n))
 
+        flux_averaged_quantity = np.zeros(len(psi_n))
         for i, val in enumerate(psi_n):
 
             # find contour object for flux value
@@ -2600,7 +2600,8 @@ class Equilibrium:
             # for each item in the contour object there's a list of points in (r,z) (i.e. a curve)
             psi_boundary_lines = []
             for item in cs.allsegs[0]:
-                psi_boundary_lines.append(item)
+                if item.shape[0] > 0:
+                    psi_boundary_lines.append(item)
 
             # find the flux surface closest to the magnetic axis
             mag_axis = self.magneticAxis()[0:2]
