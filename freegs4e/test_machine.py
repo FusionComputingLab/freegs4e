@@ -23,10 +23,19 @@ def test_coil_axis():
     def analytic_Bz(dZ):
         return (mu0 / 2) * Rcoil**2 * current / (dZ**2 + Rcoil**2) ** 1.5
 
-    # Note: Can't evaluate at R=0,
-    assert math.isclose(coil.Br(0.0001, 2.0), 0.0, abs_tol=1e-8)
-    assert math.isclose(coil.Bz(0.001, 2.0), analytic_Bz(1.0), abs_tol=1e-8)
-    assert math.isclose(coil.Bz(0.001, -1.0), analytic_Bz(-2.0), abs_tol=1e-8)
+    # run the test twice: once on the original coil and once on a copy
+    # to check both produce the same results
+    for _ in range(2):
+        # Note: Can't evaluate at R=0,
+        assert math.isclose(coil.Br(0.0001, 2.0), 0.0, abs_tol=1e-8)
+        assert math.isclose(
+            coil.Bz(0.001, 2.0), analytic_Bz(1.0), abs_tol=1e-8
+        )
+        assert math.isclose(
+            coil.Bz(0.001, -1.0), analytic_Bz(-2.0), abs_tol=1e-8
+        )
+
+        coil = coil.copy()
 
 
 def test_coil_forces():

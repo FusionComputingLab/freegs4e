@@ -13,9 +13,17 @@ def test_single():
     mcoil = MultiCoil(1.1, 0.2, current=100.0, mirror=False)
     coil = MultiCoil(1.1, 0.2, current=100.0)
 
-    assert np.isclose(coil.controlPsi(0.3, 0.1), mcoil.controlPsi(0.3, 0.1))
+    # run the test twice: once on the original coil and once on a copy
+    # to check both produce the same results
+    for _ in range(2):
+        assert np.isclose(
+            coil.controlPsi(0.3, 0.1), mcoil.controlPsi(0.3, 0.1)
+        )
 
-    assert np.isclose(coil.controlBr(0.3, 0.1), mcoil.controlBr(0.3, 0.1))
+        assert np.isclose(coil.controlBr(0.3, 0.1), mcoil.controlBr(0.3, 0.1))
+
+        mcoil = mcoil.copy()
+        coil = coil.copy()
 
 
 def test_two_turns():
@@ -52,11 +60,23 @@ def test_mirrored():
         ]
     )
 
-    assert np.isclose(circuit.controlPsi(0.3, 0.1), mcoil.controlPsi(0.3, 0.1))
+    # run the test twice: once on the original coil and once on a copy
+    # to check both produce the same results
+    for _ in range(2):
+        assert np.isclose(
+            circuit.controlPsi(0.3, 0.1), mcoil.controlPsi(0.3, 0.1)
+        )
 
-    assert np.isclose(circuit.controlBr(0.3, 0.1), mcoil.controlBr(0.3, 0.1))
+        assert np.isclose(
+            circuit.controlBr(0.3, 0.1), mcoil.controlBr(0.3, 0.1)
+        )
 
-    assert np.isclose(circuit.controlBz(0.3, 0.1), mcoil.controlBz(0.3, 0.1))
+        assert np.isclose(
+            circuit.controlBz(0.3, 0.1), mcoil.controlBz(0.3, 0.1)
+        )
+
+        mcoil = mcoil.copy()
+        circuit = circuit.copy()
 
 
 def test_move_R():
