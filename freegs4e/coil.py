@@ -114,6 +114,16 @@ class Coil:
         self.control = control
         self.area = area
 
+    def copy(self):
+        """Creates a new object that has identical attributes to self (a copy).
+
+        The copy method will need to be implemented for any subclasses of Coil
+        to ensure the correct __init__ signature is called and to ensure
+        lists/other object attributes are copied where appropriate (not passed
+        by reference).
+        """
+        return type(self)(self.R, self.Z, self.current, self.turns, self.area)
+
     def psi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z)

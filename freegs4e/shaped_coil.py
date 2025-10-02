@@ -88,6 +88,25 @@ class ShapedCoil(Coil):
         self.npoints_per_triangle = npoints
         self._points = quadrature.polygon_quad(shape, n=npoints)
 
+    def copy(self):
+        R_centre = np.copy(self._R_centre)
+        Z_centre = np.copy(self._Z_centre)
+        points = np.copy(self._points)
+
+        new_obj = type(self)(
+            np.copy(self.shape),
+            self.current,
+            self.turns,
+            self.control,
+            self.npoints_per_triangle,
+        )
+
+        new_obj._R_centre = R_centre
+        new_obj._Z_centre = Z_centre
+        new_obj._points = points
+
+        return new_obj
+
     def controlPsi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z) due to a unit current

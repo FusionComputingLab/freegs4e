@@ -81,7 +81,7 @@ class MultiCoil(Coil):
         turns=1,
         control=True,
         mirror=False,
-        polarity=[1.0, 1.0],
+        polarity=None,
         area=AreaCurrentLimit(),
     ):
         """
@@ -123,12 +123,24 @@ class MultiCoil(Coil):
         self.current = current
         self.control = control
         self.mirror = mirror
-        self.polarity = polarity
+        self.polarity = [1.0, 1.0] if polarity is None else polarity
         self.area = area
 
         # Internal (R,Z) value, should not be modified directly
         self._R_centre = np.mean(self.Rfil)
         self._Z_centre = np.mean(self.Zfil)
+
+    def copy(self):
+        return type(self)(
+            np.copy(self.Rfil),
+            np.copy(self.Zfil),
+            self.current,
+            self.turns,
+            self.control,
+            self.mirror,
+            self.polarity,
+            self.area,
+        )
 
     def controlPsi(self, R, Z):
         """

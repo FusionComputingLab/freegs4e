@@ -87,6 +87,15 @@ class Circuit:
         self.current = current
         self.control = control
 
+    def copy(self):
+        """Creates a copy of the circuit by initialising a new Circuit object.
+
+        The coils forming the circuit are copied by calling their individual
+        `copy` methods.
+        """
+        coils = [(label, c.copy(), m) for label, c, m in self.coils]
+        return type(self)(coils, self.current, self.control)
+
     def psi(self, R, Z):
         """
         Poloidal flux due to coils in the circuit (at chosen R and Z).
@@ -984,6 +993,14 @@ class Machine:
         self.coil_order = {}
         for i, coil in enumerate(self.coil_names):
             self.coil_order[coil] = i
+
+    def copy(self):
+        """Creates a copy of the machine by initialising a new object.
+
+        The coils are copied by calling the `copy` method for the coil/circuit.
+        """
+        coils = [(label, c.copy()) for label, c in self.coils]
+        return type(self)(coils, self.wall)
 
     def __repr__(self):
         """
