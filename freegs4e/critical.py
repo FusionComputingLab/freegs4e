@@ -328,7 +328,7 @@ def find_critical(
 
 
 # # this is 10x faster if the numba import works; otherwise, @njit is the identity and fastcrit is 3x faster anyways
-@njit(fastmath=True, cache=True)
+@njit(cache=True, fastmath=True)
 def scan_for_crit(R, Z, psi):
     """
     Finds the critical points in the total poloidal flux map ψ.
@@ -355,9 +355,8 @@ def scan_for_crit(R, Z, psi):
 
     dR = R[1, 0] - R[0, 0]
     dZ = Z[0, 1] - Z[0, 0]
-    Bp2 = np.zeros_like(psi)
-    psiR = Bp2.copy()
-    psiZ = Bp2.copy()
+    psiR = np.zeros_like(psi)
+    psiZ = np.zeros_like(psi)
     psiR[1:-1, 1:-1] = 0.5 * (psi[2:, 1:-1] - psi[:-2, 1:-1]) / dR
     psiZ[1:-1, 1:-1] = 0.5 * (psi[1:-1, 2:] - psi[1:-1, :-2]) / dZ
     #
@@ -366,7 +365,7 @@ def scan_for_crit(R, Z, psi):
     #     psiR[1:-1,0]=(psi[1:,0]-psi[:-1,0])/dR
     #     psiR[1:-1,-1]=(psi[1:,-1]-psi[:-1,-0])/dR
     #
-    Bp2[:, :] = psiR**2 + psiZ**2  # /R[:,:]**2
+    Bp2 = psiR**2 + psiZ**2  # /R[:,:]**2
     #
     xpoint = [(-999.0, -999.0, -999.0)]
     opoint = [(-999.0, -999.0, -999.0)]
