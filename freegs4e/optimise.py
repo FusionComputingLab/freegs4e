@@ -24,9 +24,9 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 from math import sqrt
 
 import matplotlib.pyplot as plt
-from freegs.plotting import plotEquilibrium
 
 from . import optimiser, picard
+from .plotting import plotEquilibrium
 
 # Measures which operate on Equilibrium objects
 

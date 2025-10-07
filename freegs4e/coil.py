@@ -114,6 +114,20 @@ class Coil:
         self.control = control
         self.area = area
 
+    def copy(self):
+        """Creates a new object that has identical attributes to self (a copy).
+
+        The copy method will need to be implemented for any subclasses of Coil
+        to ensure the correct __init__ signature is called and to ensure
+        lists/other object attributes are copied where appropriate (not passed
+        by reference).
+        """
+        new_obj = type(self)(
+            self.R, self.Z, self.current, self.turns, self.area
+        )
+        new_obj._area = self.area
+        return new_obj
+
     def psi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z)
@@ -283,11 +297,11 @@ class Coil:
         The cross-section area of the coil in m^2
         """
         if isinstance(self._area, numbers.Number):
-            assert self._area > 0
+            assert self._area >= 0
             return self._area
         # Calculate using functor
         area = self._area(self)
-        assert area > 0
+        assert area >= 0
         return area
 
     @area.setter
