@@ -1523,9 +1523,9 @@ class Equilibrium:
         ui_ellipse = sh.Polygon(
             ellipse_points(
                 R0=self._sep_RZmax,
-                Z0=self._sep_ZRmax,
+                Z0=self._sep_ZRmin,
                 A=self._sep_RZmax - self._sep_Rmin,
-                B=self._sep_Zmax - self._sep_ZRmax,
+                B=self._sep_Zmax - self._sep_ZRmin,
             )
         )
         lo_ellipse = sh.Polygon(
@@ -1539,9 +1539,9 @@ class Equilibrium:
         li_ellipse = sh.Polygon(
             ellipse_points(
                 R0=self._sep_RZmin,
-                Z0=self._sep_ZRmax,
+                Z0=self._sep_ZRmin,
                 A=self._sep_RZmin - self._sep_Rmin,
-                B=self._sep_ZRmax - self._sep_Zmin,
+                B=self._sep_ZRmin - self._sep_Zmin,
             )
         )
 
@@ -1554,7 +1554,7 @@ class Equilibrium:
         )
         ui_diag = sh.LineString(
             [
-                [self._sep_RZmax, self._sep_ZRmax],
+                [self._sep_RZmax, self._sep_ZRmin],
                 [self._sep_Rmin, self._sep_Zmax],
             ]
         )
@@ -1566,21 +1566,21 @@ class Equilibrium:
         )
         li_diag = sh.LineString(
             [
-                [self._sep_RZmin, self._sep_ZRmax],
+                [self._sep_RZmin, self._sep_ZRmin],
                 [self._sep_Rmin, self._sep_Zmin],
             ]
         )
 
         # find intersecting line lengths
         uo_diag_core = uo_diag.intersection(plasma_boundary).length
-        ui_diag_core = uo_diag.intersection(plasma_boundary).length
-        lo_diag_core = uo_diag.intersection(plasma_boundary).length
-        li_diag_core = uo_diag.intersection(plasma_boundary).length
+        ui_diag_core = ui_diag.intersection(plasma_boundary).length
+        lo_diag_core = lo_diag.intersection(plasma_boundary).length
+        li_diag_core = li_diag.intersection(plasma_boundary).length
 
         uo_diag_ellipse = uo_diag.intersection(uo_ellipse).length
-        ui_diag_ellipse = uo_diag.intersection(ui_ellipse).length
-        lo_diag_ellipse = uo_diag.intersection(lo_ellipse).length
-        li_diag_ellipse = uo_diag.intersection(li_ellipse).length
+        ui_diag_ellipse = ui_diag.intersection(ui_ellipse).length
+        lo_diag_ellipse = lo_diag.intersection(lo_ellipse).length
+        li_diag_ellipse = li_diag.intersection(li_ellipse).length
 
         # calculate squarenesses
         s_uo = (uo_diag_core - uo_diag_ellipse) / (
