@@ -29,14 +29,31 @@ def test_move_R():
         current=100.0,
     )
 
+    # change the copy by a different amount to ensure changing the copy
+    # does not impact the original coil
+    coil1_copy = coil1.copy()
+    coil1_copy.R += dR + 0.4
+
     # Shift coil1 to same location as coil2
     coil1.R += dR
 
-    assert np.isclose(coil1.controlPsi(0.4, 0.5), coil2.controlPsi(0.4, 0.5))
+    # run the test twice: once on the original coil and once on a copy
+    # to check both produce the same results
+    for _ in range(2):
+        assert np.isclose(
+            coil1.controlPsi(0.4, 0.5), coil2.controlPsi(0.4, 0.5)
+        )
 
-    assert np.isclose(coil1.controlBr(0.3, -0.2), coil2.controlBr(0.3, -0.2))
+        assert np.isclose(
+            coil1.controlBr(0.3, -0.2), coil2.controlBr(0.3, -0.2)
+        )
 
-    assert np.isclose(coil1.controlBz(1.75, 1.2), coil2.controlBz(1.75, 1.2))
+        assert np.isclose(
+            coil1.controlBz(1.75, 1.2), coil2.controlBz(1.75, 1.2)
+        )
+
+        coil1 = coil1.copy()
+        coil2 = coil2.copy()
 
 
 def test_move_Z():
