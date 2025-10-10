@@ -2439,13 +2439,24 @@ class Equilibrium:
         psi_bndry = self.psi_bndry
         xpts = self.xpt
 
-        # compute absolute difference between each point's ψ and psi_bndry and then
-        # get indices of the two smallest differences
-        closest_indices = np.argsort(np.abs(xpts[:, 2] - psi_bndry))[:2]
+        # build polygon of the tokamak wall
+        polygon = sh.Polygon(
+            np.array([self.tokamak.wall.R, self.tokamak.wall.Z]).T
+        )
 
-        # extract the corresponding rows (two X-points closest to psi_bndry, then sort by lowest z coord z-point)
-        closest_xpts = xpts[closest_indices]
-        closest_xpts_sorted = closest_xpts[np.argsort(closest_xpts[:, 1])]
+        # find x-points inside the wall
+        mask = np.array(
+            [polygon.contains(sh.Point(x, y)) for x, y in xpts[:, 0:2]]
+        )
+
+        # select these x-points
+        xpts_inside_wall = xpts[mask, :]
+
+        # get indices of the two cloest to magnetic axis
+        closest_xpts_idxs = np.argsort(
+            np.linalg.norm(xpts_inside_wall[:, 0:2] - self.opt[0, 0:2], axis=1)
+        )
+        closest_xpts_sorted = xpts_inside_wall[closest_xpts_idxs[0:2], :]
 
         # find the flux contours for the values of psi_boundary at each X-point
         contour0 = plt.contour(
