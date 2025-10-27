@@ -37,6 +37,7 @@ from .gradshafranov import (  # operators which define the G-S equation
     GSsparse4thOrder,
     mu0,
 )
+from .plotting import plotEquilibrium
 
 
 class Equilibrium:
@@ -2789,8 +2790,6 @@ class Equilibrium:
             axis = eq.plot(legend=True)
             axis.set_title("Plasma Equilibrium Flux Surfaces")
         """
-
-        from .plotting import plotEquilibrium
 
         return plotEquilibrium(
             self,
