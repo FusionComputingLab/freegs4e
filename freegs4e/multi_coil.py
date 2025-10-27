@@ -131,7 +131,16 @@ class MultiCoil(Coil):
         self._Z_centre = np.mean(self.Zfil)
 
     def copy(self):
-        return type(self)(
+        """
+        Create a copy of this object.
+
+        Returns
+        -------
+        new_obj : type(self)
+            A new instance of the same class with copied and optionally modified attributes.
+        """
+
+        new_obj = type(self)(
             np.copy(self.Rfil),
             np.copy(self.Zfil),
             self.current,
@@ -141,6 +150,18 @@ class MultiCoil(Coil):
             self.polarity,
             self.area,
         )
+
+        # copy any additional attributes if they exist on the original
+        extra_attrs = ["rectangle", "resistivity", "dR", "dZ"]
+        for key in extra_attrs:
+            try:
+                value = getattr(self, key)
+                setattr(new_obj, key, value)
+            except AttributeError:
+                # Skip if the attribute doesn't exist on the original
+                pass
+
+        return new_obj
 
     def controlPsi(self, R, Z):
         """
@@ -260,11 +281,29 @@ class MultiCoil(Coil):
 
     def plot(self, axis=None, show=False):
         """
-        Plot the coil including turn locations
+        Plot the coil geometry including the turn (filament) locations.
+
+        This method attempts to plot the coil using the class's `plot_nke` method.
+        If that fails (e.g., due to a missing method or plotting error), it falls
+        back to plotting the coil turn positions directly using `matplotlib`.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes, optional
+            The Matplotlib axis to plot on. If None, a new figure and axis are created.
+        show : bool, optional
+            Whether to call `plt.show()` after plotting. Default is False.
+
+        Returns
+        -------
+        axis : matplotlib.axes.Axes
+            The axis object containing the plot.
+
         """
+
         try:
             axis = self.plot_nke(axis, show)
-        except:
+        except Exception as e:
             if axis is None:
                 fig = plt.figure()
                 axis = fig.add_subplot(111)

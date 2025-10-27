@@ -37,6 +37,7 @@ from .gradshafranov import (  # operators which define the G-S equation
     GSsparse4thOrder,
     mu0,
 )
+from .plotting import plotEquilibrium
 
 
 class Equilibrium:
@@ -2737,29 +2738,69 @@ class Equilibrium:
             self.psi_bndry = None
             self.mask = None
 
-    def plot(self, axis=None, show=True, oxpoints=True):
+    def plot(
+        self,
+        axis=None,
+        xpoints=True,
+        opoints=True,
+        wall=True,
+        limiter=True,
+        legend=False,
+        show=True,
+    ):
         """
-        Plot the equilibrium.
+        Plot the magnetic equilibrium flux surfaces and key geometric features.
+
+        This method provides a convenient interface to visualize the equilibrium
+        stored in the current object. It calls the `plotEquilibrium` function to
+        display magnetic flux contours, separatrix, magnetic nulls (X- and O-points),
+        and the tokamak boundary geometry (wall and limiter).
 
         Parameters
         ----------
-        axis: object
-            Matplotlib axis object.
-        show: bool
-            Calls matplotlib.pyplot.show() before returning.
-        oxpoints: bool
-            Plot X points and O points.
+        axis : matplotlib.axes.Axes, optional
+            Axis object on which to plot. If `None`, a new figure and axis are created.
+        xpoints : bool, default=True
+            If True, plot magnetic X-points as red 'x' markers.
+        opoints : bool, default=True
+            If True, plot magnetic O-points as green '*' markers.
+        wall : bool, default=True
+            If True, plot the tokamak wall outline as a solid black line.
+        limiter : bool, default=True
+            If True, plot the limiter outline as a dashed black line.
+        legend : bool, default=False
+            If True, display a legend describing plotted features.
+        show : bool, default=True
+            If True, call `matplotlib.pyplot.show()` before returning.
 
         Returns
         -------
-        axis
-            Matplotlib axis object.
+        axis : matplotlib.axes.Axes
+            The matplotlib axis containing the plotted equilibrium.
 
+        Notes
+        -----
+        - This method is a wrapper around `plotEquilibrium(self, ...)`.
+        - The equilibrium must be solved before plotting; otherwise, a warning
+        will be printed.
+
+        Examples
+        --------
+            eq.solve()
+            axis = eq.plot(legend=True)
+            axis.set_title("Plasma Equilibrium Flux Surfaces")
         """
 
-        from .plotting import plotEquilibrium
-
-        return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
+        return plotEquilibrium(
+            self,
+            axis=axis,
+            xpoints=xpoints,
+            opoints=opoints,
+            wall=wall,
+            limiter=limiter,
+            legend=legend,
+            show=show,
+        )
 
     def _separatrix_metrics(self):
         """
