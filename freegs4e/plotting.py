@@ -181,25 +181,37 @@ def plotIOConstraints(control, axis=None, show=True):
             control.null_points[0],
             control.null_points[1],
             "1",
-            color="purple",
+            color="m",
             markersize=10,
+            markeredgewidth=2.0,
         )
         axis.plot(
-            [], [], "1", color="purple", markersize=10, label="Null points"
+            [],
+            [],
+            "1",
+            color="m",
+            markersize=10,
+            markeredgewidth=2.0,
+            label="Null points",
         )
 
     # plot isoflux constraints
     if control.isoflux_set is not None:
         color = [
+            "tab:brown",
             "tab:orange",
             "tab:pink",
-            "tab:brown",
             "tab:gray",
             "tab:olive",
         ]
         for i, isoflux in enumerate(control.isoflux_set):
             axis.plot(
-                isoflux[0], isoflux[1], "+", color=color[i], markersize=10
+                isoflux[0],
+                isoflux[1],
+                "+",
+                color=color[i],
+                markersize=10,
+                markeredgewidth=2.0,
             )
             axis.plot(
                 [],
@@ -208,6 +220,7 @@ def plotIOConstraints(control, axis=None, show=True):
                 color=color[i],
                 label=f"Isoflux set ({i})",
                 markersize=10,
+                markeredgewidth=2.0,
             )
 
     if show:
@@ -293,31 +306,60 @@ def plotEquilibrium(
     levels = linspace(amin(psi), amax(psi), 50)
     axis.contour(eq.R, eq.Z, psi, levels=levels)
 
-    # plot separatrix
+    # plot separatrix (from primary X-point)
     if eq._profiles.flag_limiter:
-        colour = "r"
-        style = "dashed"
-        label = "Separatrix (limited)"
+        label = "LCFS (limited plasma)"
     else:
-        colour = "r"
-        style = "solid"
-        label = "Separatrix (diverted)"
+        label = "Separatrix (primary X-point)"
+    colour = "r"
+    style = "solid"
     axis.contour(
         eq.R, eq.Z, psi, levels=[eq.psi_bndry], colors=colour, linestyles=style
     )
     axis.plot([], [], colour, label=label, linestyle=style)
 
+    # plot extra separatrix (LCFS) if plasma limited
+    if eq._profiles.flag_limiter:
+        colour = "k"
+        style = "dashed"
+        axis.contour(
+            eq.R,
+            eq.Z,
+            psi,
+            levels=[xpt[0, 2]],
+            colors=colour,
+            linestyles=style,
+        )
+        axis.plot(
+            [],
+            [],
+            colour,
+            label="Separatrix (primary X-point)",
+            linestyle=style,
+        )
+
     # plot x point
     if xpoints:
         for r, z, _ in xpt:
-            axis.plot(r, z, "rx")
-        axis.plot([], [], "rx", label="X-points")
+            axis.plot(r, z, "rx", markersize=9)
+        axis.plot(
+            xpt[0, 0], xpt[0, 1], "rx", markersize=9, markeredgewidth=2.5
+        )
+        axis.plot([], [], "rx", markersize=9, label="X-points")
+        axis.plot(
+            [],
+            [],
+            "rx",
+            markersize=9,
+            markeredgewidth=2.5,
+            label="X-point (primary)",
+        )
 
     # plot op points
     if opoints:
         for r, z, _ in opt:
-            axis.plot(r, z, "g*")
-        axis.plot([], [], "g*", label="O-points")
+            axis.plot(r, z, "g2", markersize=9)
+        axis.plot([], [], "g2", markersize=9, label="O-points")
 
     # plot wall
     if wall and eq.tokamak.wall and len(eq.tokamak.wall.R):
@@ -332,7 +374,7 @@ def plotEquilibrium(
         axis.plot(
             list(eq.tokamak.limiter.R) + [eq.tokamak.limiter.R[0]],
             list(eq.tokamak.limiter.Z) + [eq.tokamak.limiter.Z[0]],
-            "k--",
+            "k:",
         )
 
     if legend:
