@@ -1,5 +1,5 @@
 """
-Plotting using matplotlib
+Plot aspects of the tokamak and equilibrium. 
 
 Copyright 2024 Nicola C. Amorisco, Adriano Agnello, George K. Holt, Ben Dudson.
 
@@ -18,13 +18,42 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
+import matplotlib.pyplot as plt
+import numpy as np
 from numpy import amax, amin, linspace
 
 from . import critical
 
 
 def plotCoils(coils, axis=None):
-    import matplotlib.pyplot as plt
+    """
+    Plot the geometry of magnetic field coils.
+
+    This function prepares a plot of the coil set used in a tokamak or other
+    magnetic confinement configuration. It creates a Matplotlib axis if one
+    is not provided, allowing additional geometric or field features to be
+    overlaid later.
+
+    Parameters
+    ----------
+    coils : object
+        Coil geometry object containing spatial information about the magnetic
+        coils (e.g., current centerlines or cross-sections). The exact structure
+        of `coils` depends on the specific equilibrium or control framework.
+    axis : matplotlib.axes.Axes, optional
+        Axis object on which to plot. If `None`, a new figure and axis are created.
+
+    Returns
+    -------
+    axis : matplotlib.axes.Axes
+        The matplotlib axis prepared for coil plotting.
+
+    Notes
+    -----
+    - This function currently initializes the plot but does not draw coil shapes.
+      It can be extended to plot coil positions or outlines using data from
+      `coils`.
+    """
 
     if axis is None:
         fig = plt.figure()
@@ -35,14 +64,44 @@ def plotCoils(coils, axis=None):
 
 def plotConstraints(control, axis=None, show=True):
     """
-    Plots constraints used for coil current control
+    Plot magnetic control constraints such as X-points and isoflux surfaces.
 
-    axis     - Specify the axis on which to plot
-    show     - Call matplotlib.pyplot.show() before returning
+    This function visualizes the spatial constraints used for coil current
+    optimization or magnetic equilibrium control, including X-point locations
+    and isoflux surface definitions. These constraints are typically used in
+    inverse equilibrium solvers or feedback control algorithms.
 
+    Parameters
+    ----------
+    control : object
+        Control data object containing constraint information with attributes:
+        - `xpoints` : list of (R, Z) tuples
+            Target locations for X-point constraints.
+        - `isoflux` : list of (R1, Z1, R2, Z2) tuples
+            Pairs of points defining line segments that should lie on the same
+            poloidal flux surface.
+    axis : matplotlib.axes.Axes, optional
+        Axis object on which to plot. If `None`, a new figure and axis are created.
+    show : bool, default=True
+        If True, call `matplotlib.pyplot.show()` before returning.
+
+    Returns
+    -------
+    axis : matplotlib.axes.Axes
+        The matplotlib axis containing the plotted constraints.
+
+    Notes
+    -----
+    - X-point constraints are plotted as blue crosses (`"bx"`).
+    - Isoflux constraints are plotted as dashed blue line segments with triangle
+      markers (`":b^"`).
+    - A legend is displayed automatically if `show=True`.
+
+    Examples
+    --------
+        axis = plotConstraints(control)
+        axis.set_title("Coil Control Constraints")
     """
-
-    import matplotlib.pyplot as plt
 
     if axis is None:
         fig = plt.figure()
@@ -71,23 +130,52 @@ def plotConstraints(control, axis=None, show=True):
 
 def plotIOConstraints(control, axis=None, show=True):
     """
-    Plots constraints used for coil current control
+    Plot magnetic control constraints for equilibrium reconstruction.
 
-    axis     - Specify the axis on which to plot
-    show     - Call matplotlib.pyplot.show() before returning
+    This function visualizes the geometric constraints used in coil current
+    control or equilibrium reconstruction, including magnetic null points and
+    isoflux target locations. These constraints are typically used to ensure
+    that a magnetic configuration satisfies specified plasma shape or field
+    conditions.
 
+    Parameters
+    ----------
+    control : object
+        An object containing magnetic control data with attributes:
+        - `null_points` : tuple of array-like
+            Coordinates (R, Z) of magnetic null points, if defined.
+        - `isoflux_set` : list of array-like
+            A list of isoflux constraint points, where each element is a pair
+            of arrays (R, Z) defining a set of target locations for equal
+            poloidal flux.
+    axis : matplotlib.axes.Axes, optional
+        Axis object on which to plot. If `None`, a new figure and axis are created.
+    show : bool, default=True
+        If True, call `matplotlib.pyplot.show()` before returning.
+
+    Returns
+    -------
+    axis : matplotlib.axes.Axes
+        The matplotlib axis containing the plotted constraints.
+
+    Notes
+    -----
+    - Null points are plotted as purple downward tick markers (`"1"`).
+    - Isoflux constraints are plotted as plus markers (`"+"`) in distinct colors.
+    - A legend is automatically displayed in the upper-right corner if `show=True`.
+
+    Examples
+    --------
+        axis = plotIOConstraints(control)
+        axis.set_title("Magnetic Control Constraints: Null Points and Isoflux Sets")
     """
 
-    import matplotlib
-    import matplotlib.pyplot as plt
-
-    cmap = matplotlib.cm.get_cmap("gnuplot")
-
+    # axes
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
 
-    # Locations of the X-points
+    # locations of the null points
     if control.null_points is not None:
         axis.plot(
             control.null_points[0],
@@ -97,16 +185,29 @@ def plotIOConstraints(control, axis=None, show=True):
             markersize=10,
         )
         axis.plot(
-            [], [], "1", color="purple", markersize=10, label="Null-points"
+            [], [], "1", color="purple", markersize=10, label="Null points"
         )
 
-    # Isoflux surfaces
+    # plot isoflux constraints
     if control.isoflux_set is not None:
-        color = cmap(np.random.random())
+        color = [
+            "tab:orange",
+            "tab:pink",
+            "tab:brown",
+            "tab:gray",
+            "tab:olive",
+        ]
         for i, isoflux in enumerate(control.isoflux_set):
-            axis.plot(isoflux[0], isoflux[1], "+", color=color, markersize=10)
             axis.plot(
-                [], [], "+", color=color, label=f"Isoflux_{i}", markersize=10
+                isoflux[0], isoflux[1], "+", color=color[i], markersize=10
+            )
+            axis.plot(
+                [],
+                [],
+                "+",
+                color=color[i],
+                label=f"Isoflux set ({i})",
+                markersize=10,
             )
 
     if show:
@@ -117,126 +218,175 @@ def plotIOConstraints(control, axis=None, show=True):
 
 
 def plotEquilibrium(
-    eq, axis=None, show=True, oxpoints=True, wall=True, limiter=True
+    eq,
+    axis=None,
+    xpoints=True,
+    opoints=True,
+    wall=True,
+    limiter=True,
+    legend=False,
+    show=True,
 ):
     """
-    Plot the equilibrium flux surfaces
+    Plot poloidal magnetic ψ(R, Z) flux surfaces and key geometric features of an equilibrium in
+    FreeGSNKE. It can also overlay the separatrix, magnetic X- and
+    O-points, the plasma-facing wall, and the limiter geometry.
 
-    axis     - Specify the axis on which to plot
-    show     - Call matplotlib.pyplot.show() before returning
-    oxpoints - Plot X points as red circles, O points as green circles
-    wall     - Plot the wall (limiter)
+    Parameters
+    ----------
+    eq : object
+        An equilibrium object containing fields `R`, `Z`, and `psi()`, as well
+        as profile data (`_profiles.opt`, `_profiles.xpt`) and tokamak geometry
+        (`tokamak.wall`, `tokamak.limiter`).
+    axis : matplotlib.axes.Axes, optional
+        Axis object to plot on. If `None`, a new figure and axis are created.
+    xpoints : bool, default=True
+        If True, plot magnetic X-points (red 'x' markers).
+    opoints : bool, default=True
+        If True, plot magnetic O-points (green '*' markers).
+    wall : bool, default=True
+        If True, plot the tokamak wall outline as a solid black curve.
+    limiter : bool, default=True
+        If True, plot the limiter outline as a dashed black curve.
+    legend : bool, default=False
+        If True, display a legend describing plotted features.
+    show : bool, default=True
+        If True, call `matplotlib.pyplot.show()` before returning.
 
+    Returns
+    -------
+    axis : matplotlib.axes.Axes
+        The matplotlib axis containing the plotted equilibrium.
+
+    Notes
+    -----
+    - The function assumes that the equilibrium has already been solved;
+      if not, it will print a warning message.
+    - The separatrix is plotted using a solid red line for diverted equilibria
+      and a dashed red line for limited equilibria.
+
+    Examples
+    --------
+        axis = plotEquilibrium(eq, legend=True)
+        axis.set_title("Tokamak Equilibrium Flux Surfaces")
     """
 
-    import matplotlib.pyplot as plt
+    # extract data
+    try:
+        psi = eq.psi()
+        opt = eq._profiles.opt
+        xpt = eq._profiles.xpt
+    except:
+        print(
+            "This equilibrium has not been solved: please solve for an equilbirium first!"
+        )
 
-    psi = eq.psi()
-
+    # axes
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
-
-    levels = linspace(amin(psi), amax(psi), 50)
-
-    axis.contour(eq.R, eq.Z, psi, levels=levels)
     axis.set_aspect("equal")
     axis.set_xlabel("Major radius [m]")
     axis.set_ylabel("Height [m]")
 
-    try:
-        eq._profiles
+    # plot flux contours
+    levels = linspace(amin(psi), amax(psi), 50)
+    axis.contour(eq.R, eq.Z, psi, levels=levels)
 
-        if oxpoints:
-            # Add O- and X-points
-            # opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
-            opt = eq._profiles.opt
-            xpt = eq._profiles.xpt
+    # plot separatrix
+    if eq._profiles.flag_limiter:
+        colour = "r"
+        style = "dashed"
+        label = "Separatrix (limited)"
+    else:
+        colour = "r"
+        style = "solid"
+        label = "Separatrix (diverted)"
+    axis.contour(
+        eq.R, eq.Z, psi, levels=[eq.psi_bndry], colors=colour, linestyles=style
+    )
+    axis.plot([], [], colour, label=label, linestyle=style)
 
-            for r, z, _ in xpt:
-                axis.plot(r, z, "rx")
-            for r, z, _ in opt:
-                axis.plot(r, z, "gx")
+    # plot x point
+    if xpoints:
+        for r, z, _ in xpt:
+            axis.plot(r, z, "rx")
+        axis.plot([], [], "rx", label="X-points")
 
-            if xpt is not []:
-                psi_bndry = xpt[0][2]
-                if eq._profiles.flag_limiter:
-                    axis.contour(
-                        eq.R,
-                        eq.Z,
-                        psi,
-                        levels=[eq._profiles.psi_bndry],
-                        colors="k",
-                    )
-                    axis.contour(
-                        eq.R,
-                        eq.Z,
-                        psi,
-                        levels=[psi_bndry],
-                        colors="r",
-                        linestyles="dashed",
-                    )
-                    # cs = plt.contour(eq.R, eq.Z, psi, levels=[eq._profiles.psi_bndry], alpha=0)
-                    # paths = cs.collections[0].get_paths()
-                    # for path in paths:
-                    #     vertices = path.vertices
-                    #     if np.sum(vertices[0] == vertices[-1])>1:
-                    #         axis.plot(vertices[:,0], vertices[:,1], 'k')
+    # plot op points
+    if opoints:
+        for r, z, _ in opt:
+            axis.plot(r, z, "g*")
+        axis.plot([], [], "g*", label="O-points")
 
-                else:
-                    axis.contour(
-                        eq.R, eq.Z, psi, levels=[psi_bndry], colors="r"
-                    )
-
-                # Add legend
-                axis.plot([], [], "rx", label="X-points")
-                axis.plot([], [], "r", label="Separatrix")
-            if opt is not []:
-                axis.plot([], [], "gx", label="O-points")
-
-    except:
-        print(
-            "This equilibrium has not been solved: the separatrix can not be drawn."
-        )
-        print("Please solve first for a plot of the critical points.")
-
+    # plot wall
     if wall and eq.tokamak.wall and len(eq.tokamak.wall.R):
         axis.plot(
             list(eq.tokamak.wall.R) + [eq.tokamak.wall.R[0]],
             list(eq.tokamak.wall.Z) + [eq.tokamak.wall.Z[0]],
             "k",
         )
+
+    # plot limiter
     if limiter and eq.tokamak.limiter and len(eq.tokamak.limiter.R):
         axis.plot(
             list(eq.tokamak.limiter.R) + [eq.tokamak.limiter.R[0]],
             list(eq.tokamak.limiter.Z) + [eq.tokamak.limiter.Z[0]],
             "k--",
-            lw=0.5,
         )
 
+    if legend:
+        axis.legend(loc="upper right")
+
     if show:
-        plt.legend()
         plt.show()
 
     return axis
 
 
-import numpy as np
-
-
 def make_broad_mask(mask, layer_size=1):
-    """Enlarges a mask with the points just outside the input, with a width=`layer_size`
+    """
+    Expand a binary mask by adding a border layer of specified thickness.
+
+    This function broadens a 2D boolean or binary mask by marking all points
+    that lie within a specified Manhattan distance (`layer_size`) from the
+    original masked region. The result is a new mask that includes both the
+    original region and its expanded boundary.
 
     Parameters
     ----------
+    mask : np.ndarray
+        2D boolean or binary array representing the region to be expanded.
     layer_size : int, optional
-        Width of the layer outside the limiter, by default 3
+        Number of pixels by which to expand the mask in all directions.
+        Default is 1.
 
     Returns
     -------
     layer_mask : np.ndarray
-        Mask of the points outside the limiter within a distance of `layer_size` from the limiter
+        Boolean array of the same shape as `mask`, where `True` values
+        correspond to the original region plus an outer layer of width
+        `layer_size`.
+
+    Notes
+    -----
+    - The expansion is performed by convolving the mask with a square kernel
+      of size `(2 * layer_size + 1)`, effectively performing a morphological
+      dilation.
+    - This operation is useful for defining buffer regions (e.g., just outside
+      a limiter or wall in equilibrium simulations).
+
+    Examples
+    --------
+        mask = np.array([[0, 1, 0],
+    ...                  [0, 1, 0],
+    ...                  [0, 0, 0]], dtype=bool)
+        make_broad_mask(mask, layer_size=1)
+    array([[ True,  True,  True],
+           [ True,  True,  True],
+           [ False,  True,  False]])
     """
+
     nx, ny = np.shape(mask)
     layer_mask = np.zeros(
         np.array([nx, ny]) + 2 * np.array([layer_size, layer_size])
@@ -256,17 +406,51 @@ def plotProbes(
     probes, axis=None, show=True, floops=True, pickups=True, pickups_scale=0.05
 ):
     """
-    Plot the fluxloops and pickup coils.
+    Plot magnetic diagnostics including flux loops and pickup coils.
 
-    axis     - Specify the axis on which to plot
-    show     - Call matplotlib.pyplot.show() before returning
-    floops   - Plot the floops
-    pickups  - Plot the pickups
+    This function visualises diagnostic probe locations used for equilibrium
+    reconstruction, showing the spatial distribution of flux loops and pickup
+    coils. Pickup coil orientations are indicated by small line segments
+    scaled by a user-defined factor.
 
+    Parameters
+    ----------
+    probes : object
+        An object containing probe geometry data with the following attributes:
+        - `floop_pos` : ndarray of shape (N, 2)
+            Positions of flux loops in (R, Z) coordinates.
+        - `pickup_pos` : ndarray of shape (M, 3)
+            Positions of pickup coils in (R, φ, Z) coordinates (only R and Z used).
+        - `pickup_or` : ndarray of shape (M, 3)
+            Orientation vectors of the pickup coils.
+    axis : matplotlib.axes.Axes, optional
+        Axis object on which to plot. If `None`, a new figure and axis are created.
+    show : bool, default=True
+        If True, call `matplotlib.pyplot.show()` before returning.
+    floops : bool, default=True
+        If True, plot flux loop probe locations as orange diamonds.
+    pickups : bool, default=True
+        If True, plot pickup coil locations as brown circles and their orientations
+        as short brown line segments.
+    pickups_scale : float, default=0.05
+        Scaling factor applied to pickup coil orientation vectors for visualization.
+
+    Returns
+    -------
+    axis : matplotlib.axes.Axes
+        The matplotlib axis containing the plotted probes.
+
+    Notes
+    -----
+    - The function assumes `probes.floop_pos`, `probes.pickup_pos`, and
+      `probes.pickup_or` are NumPy arrays with appropriate dimensions.
+    - The orientation lines are plotted using (R, Z) components only.
+
+    Examples
+    --------
+        axis = plotProbes(probes, pickups_scale=0.1)
+        axis.set_title("Magnetic Diagnostics: Flux Loops and Pickup Coils")
     """
-
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
 
     # create axis if none exists
     if axis is None:
@@ -309,20 +493,8 @@ def plotProbes(
             s=3,
         )
 
-        # # pickup orientation
-
-        # # Calculate the angle in radians and convert to degrees
-        # angle_radians = np.arctan2(probes.pickup_or[:, 2], probes.pickup_or[:, 0])
-        # angle_degrees = np.degrees(angle_radians)
-
-        # # make a markerstyle class instance and modify its transform prop
-        # for i in range(0, len(probes.pickup_pos[:, 0])):
-        #     t = mpl.markers.MarkerStyle(marker=u'$\u21A6$')  # "$>$"  u'$\u2192$
-        #     t._transform = t.get_transform().rotate_deg(angle_degrees[i])
-        #     axis.scatter(probes.pickup_pos[i, 0], probes.pickup_pos[i, 2], marker=t, s=40, color="brown")
-
     if show:
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.show()
 
     return axis
