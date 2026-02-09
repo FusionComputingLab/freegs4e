@@ -27,6 +27,8 @@ from scipy.sparse import eye, lil_matrix
 # elliptic integrals of first and second kind (K and E)
 from scipy.special import ellipe, ellipk
 
+from .parallel_funcs import threaded_elliptics_ek
+
 # magnetic permeability of free space
 mu0 = 4e-7 * pi
 
@@ -386,7 +388,7 @@ class GSsparse4thOrder:
         return A.tocsr()
 
 
-def Greens(Rc, Zc, R, Z):
+def Greens(Rc, Zc, R, Z, num_threads=1):
     """
     Calculate poloidal flux at (R,Z) due to a single unit of current at
     (Rc,Zc) using Greens function for the elliptic operator above. Greens
@@ -425,12 +427,11 @@ def Greens(Rc, Zc, R, Z):
     k2 = clip(k2, 1e-10, 1.0 - 1e-10)
     k = sqrt(k2)
 
+    eie, eik = threaded_elliptics_ek(k2, num_threads)
+
     # note definition of ellipk, ellipe in scipy is K(k^2), E(k^2)
     return (
-        (mu0 / (2.0 * pi))
-        * sqrt(R * Rc)
-        * ((2.0 - k2) * ellipk(k2) - 2.0 * ellipe(k2))
-        / k
+        (mu0 / (2.0 * pi)) * sqrt(R * Rc) * ((2.0 - k2) * eik - 2.0 * eie) / k
     )
 
 
