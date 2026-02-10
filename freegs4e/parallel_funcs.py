@@ -1,7 +1,12 @@
+import os
 import threading
 
 import numpy as np
 from scipy.special import ellipe, ellipk
+from threadpoolctl import ThreadpoolController
+
+# TODO: unify/centralize thread control
+thread_controller = ThreadpoolController()
 
 
 class ReturnThread(threading.Thread):
@@ -28,7 +33,16 @@ class ReturnThread(threading.Thread):
         return self._return
 
 
-def threaded_elliptics_ek(k2, num_threads_total):
+@thread_controller.wrap(limits={"blas": 1, "openmp": 1})
+def threaded_elliptics_ek(k2):
+
+    # The wrapper prevents BLAS/OpenMP threads from being spawned by scipy (which is not expected to happen anyway), as this could cause oversubscription issues.
+
+    # TODO: try to simplify slicing logic, see if using threadpool from concurrent.futures if feasible
+
+    num_threads_total = int(
+        os.environ.get("OMP_NUM_THREADS", 1)
+    )  # TODO: improve this. also, exception when not numeric
 
     if num_threads_total == 1:
         return ellipe(k2), ellipk(k2)
@@ -51,8 +65,9 @@ def threaded_elliptics_ek(k2, num_threads_total):
             end if i != num_threads - 1 else main_len
         )  # last slice gets the remainder
 
-        threads_e.append(ReturnThread(target=ellipe, args=(k2[start:end],)))
-        threads_k.append(ReturnThread(target=ellipk, args=(k2[start:end],)))
+        k2_slice = k2[start:end]
+        threads_e.append(ReturnThread(target=ellipe, args=(k2_slice,)))
+        threads_k.append(ReturnThread(target=ellipk, args=(k2_slice,)))
 
     for te, tk in zip(threads_e, threads_k):
         te.start()
