@@ -22,13 +22,14 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numexpr as ne
+from line_profiler import profile
 from numpy import clip, pi, sqrt, zeros
 from scipy.sparse import eye, lil_matrix
 
 # elliptic integrals of first and second kind (K and E)
 from scipy.special import ellipe, ellipk
 
-from .parallel_funcs import threaded_elliptics_ek
+from .parallel_funcs import threaded_clip, threaded_elliptics_ek
 
 # magnetic permeability of free space
 mu0 = 4e-7 * pi
@@ -389,6 +390,7 @@ class GSsparse4thOrder:
         return A.tocsr()
 
 
+@profile
 def Greens(Rc, Zc, R, Z):
     """
     Calculate poloidal flux at (R,Z) due to a single unit of current at
@@ -421,17 +423,20 @@ def Greens(Rc, Zc, R, Z):
         Value of the poloidal flux at (R,Z).
     """
 
+    # TODO: the next version of numexpr should allow for cache_disabling, this could
+    # help address our memory issues.
+
     # calculate k^2
     k2 = ne.evaluate("4.0 * R * Rc / ((R + Rc) ** 2 + (Z - Zc) ** 2)")
 
     # clip to between 0 and 1 to avoid nans e.g. when coil is on grid point
-    k2 = clip(k2, 1e-10, 1.0 - 1e-10)
+    k2 = threaded_clip(k2, 1e-10, 1.0 - 1e-10, out=k2)
 
     # note definition of ellipk, ellipe in scipy is K(k^2), E(k^2)
     eie, eik = threaded_elliptics_ek(k2)
 
     res = ne.evaluate(
-        "(mu0 / (2.0 * pi)) * sqrt(R * Rc) * ((2.0 - k2) * eik - 2.0 * eie) / sqrt(k2)"
+        "(mu0 / (2.0 * pi)) * sqrt(R * Rc) * ((2.0 - k2) * eik - 2.0 * eie) / sqrt(k2)",
     )
 
     return res
