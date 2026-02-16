@@ -22,38 +22,17 @@ def set_num_threads(num_threads):
     ne.set_num_threads(num_threads)
 
 
-class ReturnThread(threading.Thread):
-    def __init__(
-        self,
-        group=None,
-        target=None,
-        name=None,
-        args=(),
-        kwargs={},
-        verbose=None,
-    ):
-        # Initializing the Thread class
-        super().__init__(group, target, name, args, kwargs)
-        self._return = None
-
-    # Overriding the Thread.run function
-    def run(self):
-        if self._target is not None:
-            self._return = self._target(*self._args, **self._kwargs)
-
-    def join(self):
-        super().join()
-        return self._return
-
-
 @thread_controller.wrap(limits={"blas": 1, "openmp": 1})
-def threaded_elliptics_ek(k2):
+def threaded_elliptics_ek(k2, single_thread=False):
 
     # The wrapper prevents BLAS/OpenMP threads from being spawned by scipy (which is not expected to happen anyway), as this could cause oversubscription issues.
 
     # TODO: try to simplify slicing logic, see if using threadpool from concurrent.futures if feasible
 
-    num_threads_total = get_num_threads()
+    num_threads_total = 1
+
+    if not single_thread:
+        num_threads_total = get_num_threads()
 
     if num_threads_total == 1:
         return ellipe(k2), ellipk(k2)
@@ -91,7 +70,11 @@ def threaded_clip(k2, amin, amax, out=None, **kwargs):
 
     # TODO: try to simplify slicing logic, see if using threadpool from concurrent.futures if feasible
 
-    num_threads = get_num_threads()
+    single_thread = kwargs.pop("single_thread", False)
+    num_threads = 1
+
+    if not single_thread:
+        num_threads = get_num_threads()
 
     # Have to manually check for some np.clip exceptions that would affect / be affected by the slicing procedure in the parallel case
     if num_threads == 1:
@@ -124,3 +107,68 @@ def threaded_clip(k2, amin, amax, out=None, **kwargs):
             executor.submit(clip, k2_slice, amin, amax, out=out_slice)
 
     return k2
+
+
+class ThreadManagedRegion:
+
+    context_depth = 0  # helps keep track of nested managed regions
+
+    def __init__(self, num_threads):
+
+        self.preset_threads = get_num_threads()
+
+        if isinstance(num_threads, int) and num_threads > 0:
+            self.context_threads = num_threads
+        elif num_threads == "default":
+            self.context_threads = self.preset_threads
+        elif num_threads == "max":
+            num_avail = len(
+                os.sched_getaffinity(0)
+            )  # TODO: from Python 3.13, process_cpu_count() preferred
+            self.context_threads = num_avail
+        else:
+            raise TypeError(
+                "Invalid number of threads '{}'. Should be an integer >1, 'default' or 'max'".format(
+                    num_threads
+                )
+            )
+
+    def __enter__(self):
+        ThreadManagedRegion.context_depth += 1
+        if context_depth == 1:
+            set_num_threads(self.context_threads)
+
+    def __exit__(self, *_):
+        if context_depth == 1:
+            set_num_threads(self.preset_threads)
+        ThreadManagedRegion.context_depth -= 1
+
+
+class SingleThreadedRegion(ThreadManagedRegion):
+
+    def __init__(self):
+        super().__init__(1)
+
+
+class ReturnThread(threading.Thread):
+    def __init__(
+        self,
+        group=None,
+        target=None,
+        name=None,
+        args=(),
+        kwargs={},
+        verbose=None,
+    ):
+        # Initializing the Thread class
+        super().__init__(group, target, name, args, kwargs)
+        self._return = None
+
+    # Overriding the Thread.run function
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args, **self._kwargs)
+
+    def join(self):
+        super().join()
+        return self._return
