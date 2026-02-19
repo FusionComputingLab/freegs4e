@@ -2,7 +2,7 @@
 Contains various classes and functions related to the elliptic operator 
 of the Grad-Shafranov equation. 
 
-Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2026 Ben Dudson, Tomas Rubio Cruz
 
 This file is part of FreeGS4E.
 
@@ -22,7 +22,6 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numexpr as ne
-from line_profiler import profile
 from numpy import clip, pi, sqrt, zeros
 from scipy.sparse import eye, lil_matrix
 
@@ -390,7 +389,6 @@ class GSsparse4thOrder:
         return A.tocsr()
 
 
-@profile
 def Greens(Rc, Zc, R, Z, limit_threading=False):
     """
     Calculate poloidal flux at (R,Z) due to a single unit of current at
@@ -406,6 +404,12 @@ def Greens(Rc, Zc, R, Z, limit_threading=False):
     and K(k^2) and E(k^2) are the complete elliptic integrals of the first
     and second kind.
 
+    This function is multithreaded. Multithreading behavior can be controlled through the
+    environment variable OMP_NUM_THREADS (preferred), NUMEXPR_NUM_THREADS or programatically
+    through the use of the function set_num_threads() in freegs4e.parallel_funcs. Note that
+    by default the number of threads is limited to 32 by numexpr: for use in HPC systems, it
+    is recommended to set NUMEXPR_MAX_THREADS to the number of available cores.
+
     Parameters
     ----------
     Rc : float
@@ -416,6 +420,10 @@ def Greens(Rc, Zc, R, Z, limit_threading=False):
         Radial position where poloidal flux is to be calcualted [m].
     Z : float
         Vertical position where poloidal flux is to be calcualted [m].
+    limit_threading: bool
+        If True, forces SOME internal functions, with high threading overhead,
+        to run single threaded. Multiple threads will still be used for low
+        overhead functionalities.
 
     Returns
     -------
@@ -424,7 +432,7 @@ def Greens(Rc, Zc, R, Z, limit_threading=False):
     """
 
     # TODO: the next version of numexpr should allow for cache_disabling, this could
-    # help address our memory issues.
+    # help address memory issues.
 
     # calculate k^2
     k2 = ne.evaluate("4.0 * R * Rc / ((R + Rc) ** 2 + (Z - Zc) ** 2)")
