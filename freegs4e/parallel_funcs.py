@@ -107,24 +107,25 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
         raise TypeError("Only numpy ndarrays are supported")
 
     num_threads = num_threads_total // 2
-    main_len = k2.shape[0]
-    step = main_len // num_threads
 
     # output arrays
     eie = np.empty(k2.shape)
     eik = np.empty(k2.shape)
 
-    futures = []
-
     with ThreadPoolExecutor(max_workers=num_threads_total) as executor:
+
+        futures = []
+
+        main_len = k2.shape[0]  # length of dimension that will be decomposed
+        step, rem = divmod(main_len, num_threads)
+        end = 0
 
         for i in range(num_threads):
 
-            start = i * step
-            end = start + step
+            start = end
             end = (
-                end if i != num_threads - 1 else main_len
-            )  # last slice gets the remainder
+                start + step + (i + 1) * (i < rem)
+            )  # first few slices get one more element to deal with remainder
 
             k2_slice = k2[start:end]
             futures.append(
@@ -134,9 +135,13 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
                 executor.submit(ellipk, k2_slice, out=eik[start:end])
             )
 
-        # exceptions are raised when calling result()
-        for future in concurrent.futures.as_completed(futures):
-            future.result()
+        # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
+        (
+            f.result()
+            for f in concurrent.futures.wait(
+                futures, return_when=concurrent.futures.FIRST_EXCEPTION
+            ).done
+        )
 
     return eie, eik
 
@@ -207,30 +212,33 @@ def threaded_clip(
             "Argument `where` of numpy ufuncs not supported by threaded_clip. Ignored."
         )
 
-    main_len = k2.shape[0]
-    step = main_len // num_threads
-
-    futures = []
-
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
+
+        futures = []
+
+        main_len = k2.shape[0]  # length of dimension that will be decomposed
+        step, rem = divmod(main_len, num_threads)
+        end = 0
 
         for i in range(num_threads):
 
-            start = i * step
-            end = start + step
+            start = end
             end = (
-                end if i != num_threads - 1 else main_len
-            )  # last slice gets the remainder
+                start + step + (i + 1) * (i < rem)
+            )  # first few slices get one more element to deal with remainder
 
             k2_slice = k2[start:end]
-            out_slice = out[start:end]
             futures.append(
-                executor.submit(clip, k2_slice, amin, amax, out=out_slice)
+                executor.submit(clip, k2_slice, amin, amax, out=out[start:end])
             )
 
-        # exceptions are raised when calling result()
-        for future in concurrent.futures.as_completed(futures):
-            future.result()
+        # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
+        (
+            f.result()
+            for f in concurrent.futures.wait(
+                futures, return_when=concurrent.futures.FIRST_EXCEPTION
+            ).done
+        )
 
     return out
 
