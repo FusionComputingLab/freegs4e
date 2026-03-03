@@ -21,9 +21,12 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
+from time import perf_counter
+
 import numexpr as ne
-from numpy import clip, pi, sqrt, zeros
-from scipy.sparse import eye, lil_matrix
+import numpy as np
+from numpy import pi
+from scipy.sparse import csr_array, eye
 
 # elliptic integrals of first and second kind (K and E)
 from scipy.special import ellipe, ellipk
@@ -88,7 +91,7 @@ class GSElliptic:
         ny = psi.shape[1]
 
         # to store output
-        b = zeros([nx, ny])
+        b = np.zeros([nx, ny])
 
         # pre-compute constants
         invdR2 = 1.0 / dR**2
@@ -300,10 +303,14 @@ class GSsparse4thOrder:
         self.Zmin = Zmin
         self.Zmax = Zmax
 
-    def __call__(self, nx, ny):
+    def __call_old__(self, nx, ny):
         """
         Generates the sparse elliptic operator Δ^* for a given number of
         grid points. Computes to fourth-order accuracy.
+
+        Uses an inefficient, but easy to check and debug entry-by-entry aproach to
+        filling the matrix, unlike the faster but more complicated __call__ method.
+        Kept as reference for debugging and and as a fallback.
 
         Parameters
         ----------
@@ -368,6 +375,7 @@ class GSsparse4thOrder:
 
                     for offset, weight in self.offset_1st:
                         A[row, row - offset * ny] += weight / (R * dR)
+
                 else:
                     for offset, weight in self.centred_2nd:
                         A[row, row + offset * ny] += weight * invdR2
@@ -387,6 +395,230 @@ class GSsparse4thOrder:
 
         # convert to Compressed Sparse Row (CSR) format
         return A.tocsr()
+
+    def __call__(self, nx, ny):
+        """
+        Generates the sparse elliptic operator Δ^* for a given number of
+        grid points. Computes to fourth-order accuracy.
+
+        Parameters
+        ----------
+        nx : int
+            Number of radial grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
+        ny : int
+            Number of vertical grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
+
+        Returns
+        -------
+        np.array
+            The operator matrix.
+        """
+
+        # calculate grid spacing
+        dR = (self.Rmax - self.Rmin) / (nx - 1)
+        dZ = (self.Zmax - self.Zmin) / (ny - 1)
+
+        # total number of points, including boundaries
+        N = nx * ny
+
+        # calculate constants
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
+
+        # The GS operator is constructed in COO format using lists of ndarrays. Each ndarray contains
+        # the row/col/value of the entries for a given stencil.
+        rows = []
+        cols = []
+        entries = []
+
+        # set boundary entries
+
+        for x in (0, nx - 1):
+            y = np.arange(ny)
+
+            row = x * ny + y
+            entry = np.ones_like(row, dtype=np.float64)
+
+            rows.append(row)
+            cols.append(row)  # no offset for dirichlet bc
+            entries.append(entry)
+
+        for y in (0, ny - 1):
+            x = np.arange(1, nx - 1)  # x=0, x=(nx-1) were already set above
+
+            row = x * ny + y
+            entry = np.ones_like(row, dtype=np.float64)
+
+            rows.append(row)
+            cols.append(row)  # no offset for dirichlet bc
+            entries.append(entry)
+
+        # set near-boundary entries (need offset stencils)
+
+        # d^2 / dR^2 - (1/R) d/dR
+        for x, offsign in zip(
+            (1, nx - 2), (1, -1)
+        ):  # offset on right (nx-2) has negative sign
+
+            y = np.arange(1, ny - 1)
+            R = self.Rmin + dR * x  # major radius of each point
+
+            row = x * ny + y
+
+            for offset, weight in self.offset_2nd:
+
+                col = row + offsign * offset * ny
+                entry = weight * invdR2
+                entry = np.full_like(row, entry, dtype=np.float64)
+
+                rows.append(row)
+                cols.append(col)
+                entries.append(entry)
+
+            for offset, weight in self.offset_1st:
+
+                col = row + offsign * offset * ny
+                entry = (
+                    -offsign * weight / (R * dR)
+                )  # sign of entry depends on direction (offsign)
+                entry = np.full_like(row, entry, dtype=np.float64)
+
+                rows.append(row)
+                cols.append(col)
+                entries.append(entry)
+
+        # d^2 / dZ^2
+        for y, offsign in zip(
+            (1, ny - 2), (1, -1)
+        ):  # offset on top (ny-2) has negative sign
+
+            x = np.arange(1, nx - 1)
+            row = x * ny + y
+
+            for offset, weight in self.offset_2nd:
+
+                col = row + offsign * offset
+                entry = weight * invdZ2
+                entry = np.full_like(row, entry, dtype=np.float64)
+
+                rows.append(row)
+                cols.append(col)
+                entries.append(entry)
+
+        # set internal entries (use centred stencil)
+
+        # build the largest rectangle in domain with only centred-scheme entries
+        y_vals = np.arange(2, ny - 2)
+        x_vals = np.arange(2, nx - 2)
+        R = self.Rmin + dR * x_vals  # major radius of each point
+
+        # 2d grid with row no. of each (x,y)
+        row_2d = x_vals[:, np.newaxis] * ny + y_vals[np.newaxis, :]
+
+        # iterate over differential operators:
+        # longitudinal --> d^2/dZ^2; radial_1 --> d^2/dR^2; radial_2 --> -(1/R) d/dR
+
+        operators = ["longitudinal", "radial_1", "radial_2"]
+        stencils = {
+            "longitudinal": self.centred_2nd,
+            "radial_1": self.centred_2nd,
+            "radial_2": self.centred_1st,
+        }
+        offscales = {"longitudinal": 1, "radial_1": ny, "radial_2": ny}
+
+        for op in operators:
+
+            stencil = stencils[op]
+            offscale = offscales[op]
+
+            size_stencil = len(stencil)
+            stencil_offsets = offscale * np.array(
+                [entry[0] for entry in stencil]
+            )
+            stencil_weights = np.array([entry[1] for entry in stencil])
+
+            # 3d grids with the row/col/weight corresponding to each x,y,offset combo
+            row = np.broadcast_to(
+                row_2d[:, :, np.newaxis], (*row_2d.shape, size_stencil)
+            )
+            col = row + stencil_offsets[np.newaxis, np.newaxis, :]
+            weights = np.broadcast_to(
+                stencil_weights[np.newaxis, np.newaxis, :], row.shape
+            )
+
+            entry = None
+
+            if op == "longitudinal":
+                # d^2 / dZ^2
+                entry = weights * invdZ2
+            elif op == "radial_1":
+                # d^2 / dR^2
+                entry = weights * invdR2
+            elif op == "radial_2":
+                # -(1/R) d/dR
+                entry = -weights / (R[:, np.newaxis, np.newaxis] * dR)
+            else:
+                raise KeyError(op)
+
+            rows.append(row.flatten())
+            cols.append(col.flatten())
+            entries.append(entry.flatten())
+
+            if op == "longitudinal":
+                # set stencil for points where a centred scheme is used longitudinally
+                # but not radially
+                for x in (1, nx - 2):
+                    y = np.arange(2, ny - 2)
+
+                    row = x * ny + y
+                    row = np.broadcast_to(
+                        row[:, np.newaxis], (*row.shape, size_stencil)
+                    )
+                    col = row + stencil_offsets[np.newaxis, :]
+                    weights = np.broadcast_to(
+                        stencil_weights[np.newaxis, :], row.shape
+                    )
+
+                    entry = weights * invdZ2
+
+                    rows.append(row.flatten())
+                    cols.append(col.flatten())
+                    entries.append(entry.flatten())
+
+            else:
+                # set stencil for points where a centred scheme is used radially
+                # but not longitudinally
+                for y in (1, ny - 2):
+                    x = np.arange(2, nx - 2)
+
+                    row = x * ny + y
+                    row = np.broadcast_to(
+                        row[:, np.newaxis], (*row.shape, size_stencil)
+                    )
+                    col = row + stencil_offsets[np.newaxis, :]
+                    weights = np.broadcast_to(
+                        stencil_weights[np.newaxis, :], row.shape
+                    )
+
+                    entry = None
+                    if op == "radial_1":
+                        entry = weights * invdR2
+                    elif op == "radial_2":
+                        entry = -weights / (R[:, np.newaxis] * dR)
+                    else:
+                        raise KeyError(op)
+
+                    rows.append(row.flatten())
+                    cols.append(col.flatten())
+                    entries.append(entry.flatten())
+
+        all_rows = np.concat(rows)
+        all_cols = np.concat(cols)
+        all_entries = np.concat(entries)
+
+        A = csr_array((all_entries, (all_rows, all_cols)), dtype=np.float64)
+
+        return A
 
 
 def Greens(Rc, Zc, R, Z, limit_threading=False):
