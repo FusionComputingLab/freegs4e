@@ -1,8 +1,8 @@
 """
-Contains various classes and functions related to the elliptic operator 
-of the Grad-Shafranov equation. 
+Contains various classes and functions related to the elliptic operator
+of the Grad-Shafranov equation.
 
-Copyright 2026 Ben Dudson, Tomas Rubio Cruz
+Copyright 2026 Ben Dudson, Tomas Rubio Cruz, Ubaid Qadri
 
 This file is part of FreeGS4E.
 
@@ -26,6 +26,8 @@ from time import perf_counter
 import numexpr as ne
 import numpy as np
 from numpy import pi
+from scipy.fft import dst
+from scipy.linalg import solve_banded
 from scipy.sparse import csr_array, eye
 
 # elliptic integrals of first and second kind (K and E)
@@ -619,6 +621,167 @@ class GSsparse4thOrder:
         A = csr_array((all_entries, (all_rows, all_cols)), dtype=np.float64)
 
         return A
+
+
+class DSTsolver:
+    """
+    DST-based Poisson/Grad–Shafranov solver on a (R, Z) rectangular grid.
+
+    Solves:  (d2/dR2 - (1/R)d/dR + d2/dZ2) psi = f  on the interior,
+    with Dirichlet boundaries supplied on the outer edges via `rhs`.
+
+    Input `rhs` format (shape (nr, nz)):
+      - Z-boundaries: rhs[:, 0], rhs[:, -1]  -> Dirichlet psi
+      - R-boundaries: rhs[0, 1:-1], rhs[-1, 1:-1] -> Dirichlet psi
+      - Interior:     rhs[1:-1, 1:-1] -> source f
+    """
+
+    def __init__(self, R: np.ndarray, Z: np.ndarray, *, dtype=np.float64):
+
+        if R.shape != Z.shape:
+            raise ValueError(
+                "shape mismatch: rhs shape {} does not match solver grid shape {}".format(
+                    rhs.shape, self.R.shape
+                )
+            )
+
+        self.Rmin = float(R[0, 0])
+        self.Rmax = float(R[-1, 0])
+        self.Zmin = float(Z[0, 0])
+        self.Zmax = float(Z[0, -1])
+        self.R = np.ascontiguousarray(R, dtype=dtype)
+        self.Z = np.ascontiguousarray(Z, dtype=dtype)
+
+        # Uniform spacings (assumed)
+        self.dR = float(R[1, 0] - R[0, 0])
+        self.dZ = float(Z[0, 1] - Z[0, 0])
+
+        # Config
+        self.dtype = dtype
+
+        # Precompute batch tridiagonal diagonals and Z-eigenvalues
+        self._init_matrix()
+
+    # Orthnormal DST-I (self-inverse)
+    def _dst1(self, x: np.ndarray) -> np.ndarray:
+        """Apply DST-I (orthonormal) along the last axis; inverse is identical."""
+        return dst(x, type=1, axis=-1, norm="ortho")
+
+    def _init_matrix(self):
+        R = self.R
+        nr, nz = R.shape
+        Nint = nz - 2
+        if Nint < 1:
+            raise ValueError(
+                "Need at least 3 Z points to have an interior. Current number: {}".format(
+                    nz
+                )
+            )
+
+        # Z eigenvalues mu_m > 0 for Dirichlet interior FD Laplacian
+        m = np.arange(1, Nint + 1, dtype=self.dtype)
+        self.mu = (2.0 / self.dZ**2) * (
+            1.0 - np.cos(m * np.pi / (Nint + 1))
+        )  # length Nint
+
+        # R-direction FD operator for (d2/dR2 - (1/R)d/dR)
+        Rvec = R[:, 0]
+        # Off-diagonals (centered derivatives)
+        self.sub = -1.0 / (2.0 * -Rvec[1:] * self.dR) + np.full(
+            nr - 1, 1.0 / self.dR**2, dtype=self.dtype
+        )
+        self.sup = +1.0 / (2.0 * -Rvec[:-1] * self.dR) + np.full(
+            nr - 1, 1.0 / self.dR**2, dtype=self.dtype
+        )
+        self.main = np.full(nr, -2.0 / self.dR**2, dtype=self.dtype)
+
+        # Impose Dirichlet at R boundaries by fixing rows:
+        # main[0] = 1, main[-1] = 1, and ensure no coupling outside:
+        self.main[0] = 1.0
+        self.main[-1] = 1.0
+        self.sub[-1] = 0.0  # nothing below last row
+        self.sup[0] = 0.0  # nothing above first row
+
+        # Correct SciPy banded matrix template
+        ab = np.zeros((3, nr), dtype=self.dtype)
+        ab[0, 1:] = self.sup[:]  # upper diag (length nr-1)
+        ab[1, :] = self.main[:]  # main diag (length nr)
+        ab[2, :-1] = self.sub[:]  # lower diag (length nr-1)
+
+        self.ab_template = ab
+
+    def __call__(self, rhs: np.ndarray) -> np.ndarray:
+        """
+        Solve for psi given rhs with mixed boundary/data layout as documented in the class docstring.
+        """
+        rhs = np.ascontiguousarray(rhs, dtype=self.dtype)
+
+        if rhs.shape != self.R.shape:
+            raise ValueError(
+                "shape mismatch: rhs shape {} does not match solver grid shape {}".format(
+                    rhs.shape, self.R.shape
+                )
+            )
+
+        # Build "g" that matches Z-boundaries linearly in Z
+        phi0 = rhs[:, 0]  # psi at Z=Zmin
+        phiL = rhs[:, -1]  # psi at Z=Zmax
+        zfrac = (self.Z - self.Zmin) / (self.Zmax - self.Zmin)
+        g = phi0[:, None] + (phiL - phi0)[:, None] * zfrac  # shape (nr, nz)
+
+        # Compute Δ*g (consistent finite differences)
+        g_RR = np.zeros_like(g)
+        g_RR[1:-1, :] = (g[:-2, :] - 2.0 * g[1:-1, :] + g[2:, :]) / self.dR**2
+
+        g_ZZ = np.zeros_like(g)
+        g_ZZ[:, 1:-1] = (g[:, :-2] - 2.0 * g[:, 1:-1] + g[:, 2:]) / self.dZ**2
+
+        # (1/R)*∂g/∂R (centered)
+        iR = 1.0 / (2.0 * self.R * self.dR)
+        iRgR = np.zeros_like(g)
+        iRgR[1:-1, :] = iR[1:-1, :] * (g[2:, :] - g[:-2, :])
+
+        Delta_g = g_RR + g_ZZ - iRgR
+
+        # Modified RHS for w: Δ* w = f - Δ* g, with w = 0 at Z boundaries
+        F = rhs - Delta_g
+        F_int = F[:, 1:-1]  # Z-interior
+
+        # DST-I along Z (interior only). For type-1 + ortho, inverse == forward.
+        F_hat = self._dst1(F_int)  # shape (nr, Nint)
+
+        # Transform R-boundary values for w and inject into each mode's RHS
+        w_b0_hat = self._dst1((rhs[0, 1:-1] - g[0, 1:-1]))  # (Nint,)
+        w_bL_hat = self._dst1((rhs[-1, 1:-1] - g[-1, 1:-1]))  # (Nint,)
+
+        # RHS per mode (transpose to (Nint, nr))
+        rhs_batch = F_hat.T.copy()  # (Nint, nr)
+        rhs_batch[:, 0] = w_b0_hat
+        rhs_batch[:, -1] = w_bL_hat
+
+        # Solve tridiagonal in R for each Z-mode: (D_RR - (1/R)D_R - mu_m * I) w_hat_m = rhs_m
+        Nint = rhs_batch.shape[0]
+        w_hat_modes = np.empty_like(rhs_batch)  # (Nint, nr)
+
+        # Banded storage uses (l,u) = (1,1)
+        for k in range(Nint):
+            mu_k = self.mu[k]
+            ab = self.ab_template.copy()
+            # Shift interior diagonal by -mu_k (Z-separation term)
+            ab[1, 1:-1] -= mu_k
+            # Solve A_k * x_k = rhs_batch[k]
+            w_hat_modes[k] = solve_banded((1, 1), ab, rhs_batch[k])
+
+        # Inverse DST (same as forward) to reconstruct w on Z interior
+        w_hat_int = w_hat_modes.T  # (nr, Nint)
+        w_int = self._dst1(w_hat_int)
+
+        # Assemble full w with zeros at Z boundaries
+        w = np.zeros_like(rhs)
+        w[:, 1:-1] = w_int
+
+        psi = g + w
+        return psi.reshape(-1)
 
 
 def Greens(Rc, Zc, R, Z, limit_threading=False):
