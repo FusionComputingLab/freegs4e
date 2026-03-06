@@ -31,21 +31,25 @@ from numpy import abs, max, reshape, zeros
 from scipy.sparse import eye
 from scipy.sparse.linalg import factorized
 
+from .gradshafranov import GSsparse, GSsparse4thOrder
+from .gs_solver import GSSolver
 
-class MGDirect:
-    def __init__(self, A):
-        self.solve = factorized(A.tocsc())  # LU decompose
 
-    def __call__(self, x, b):
+class MGDirect(GSSolver):
+    def __init__(self, A, shape):
+        self.dimensions = shape
+        self.solver = factorized(A.tocsc())  # LU decompose
+
+    def solve(self, x, b):
         b1d = reshape(b, -1)  # 1D view
 
-        x = self.solve(b1d)
+        x = self.solver(b1d)
 
         return reshape(x, b.shape)
 
 
-class MGJacobi:
-    def __init__(self, A, ncycle=4, niter=10, subsolver=None):
+class MGJacobi(GSSolver):
+    def __init__(self, A, shape, ncycle=4, niter=10, subsolver=None):
         """
         Initialise solver
 
@@ -56,6 +60,7 @@ class MGJacobi:
 
         """
         self.A = A
+        self.dimensions = shape
         self.diag = A.diagonal()
         self.subsolver = subsolver
         self.niter = niter
@@ -64,7 +69,7 @@ class MGJacobi:
         self.sub_b = None
         self.xupdate = None
 
-    def __call__(self, xi, bi, ncycle=None, niter=None):
+    def solve(self, xi, bi, ncycle=None, niter=None):
         """
         Solve Ax = b, given initial guess for x
 
@@ -109,18 +114,72 @@ class MGJacobi:
         return x.reshape(xi.shape)
 
 
+def createMultigridSolver(
+    nx, ny, order, nlevels=4, ncycle=1, niter=10, direct=True
+):
+    """
+    Creates a multigrid solver from a sparse solver of the given order and (highest)
+    resolution.
+
+    Parameters
+    -------
+    nx, ny - The highest resolution
+    order - The order of the internal sparse solver
+    nlevels - Number of multigrid levels
+    direct - Lowest level uses direct solver
+    ncycle - Number of V cycles. This is only passed to the top level MGJacobi object
+    niter - Number of Jacobi iterations per level
+
+    Returns
+    -------
+    MGsolver
+        Returns a multigrid solver
+
+    """
+
+    generator = None
+
+    if order == 2:
+        generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+    elif order == 4:
+        generator = GSsparse4thOrder(Rmin, Rmax, Zmin, Zmax)
+    else:
+        raise ValueError(
+            f"Invalid choice of order ({order}). Valid values are 2 or 4."
+        )
+
+    mg_solver = createVcycle(
+        nx=self.nx,
+        ny=self.ny,
+        generator=generator,
+        nlevels=nlevels,
+        ncycle=ncycle,
+        niter=niter,
+        direct=direct,
+    )
+
+    return mg_solver
+
+
 def createVcycle(
     nx, ny, generator, nlevels=4, ncycle=1, niter=10, direct=True
 ):
     """
     Create a hierarchy of solvers in a multigrid V-cycle
 
+    Parameters
+    -------
     nx, ny - The highest resolution
     generator(nx,ny) - Returns a sparse matrix, given resolution
     nlevels - Number of multigrid levels
     direct - Lowest level uses direct solver
     ncycle - Number of V cycles. This is only passed to the top level MGJacobi object
     niter - Number of Jacobi iterations per level
+
+    Returns
+    -------
+    MGsolver
+        Returns a multigrid solver
 
     """
 
@@ -141,15 +200,19 @@ def createVcycle(
         # Create the sparse matrix
         A = generator(nx, ny)
         # Create the solver
-        return MGJacobi(A, niter=niter, subsolver=subsolver, ncycle=ncycle)
+        return MGJacobi(
+            A, shape=(nx, ny), niter=niter, subsolver=subsolver, ncycle=ncycle
+        )
 
     # At lowest level
 
     # Create the sparse matrix
     A = generator(nx, ny)
     if direct:
-        return MGDirect(A)
-    return MGJacobi(A, niter=niter, ncycle=ncycle, subsolver=None)
+        return MGDirect(A, shape=(nx, ny))
+    return MGJacobi(
+        A, shape=(nx, ny), niter=niter, ncycle=ncycle, subsolver=None
+    )
 
 
 def smoothJacobi(A, x, b, dx, dy):
