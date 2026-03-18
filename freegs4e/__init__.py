@@ -36,7 +36,7 @@ from importlib import metadata
 
 __version__ = metadata.version("freegs4e")
 
-from . import control, jtor, machine, plotting
+from . import control, jtor, machine, multigrid, plotting
 from .dump import OutputFile
 from .equilibrium import Equilibrium
 from .picard import solve
