@@ -542,7 +542,7 @@ class GSsparse4thOrder(GSsparse):
         return A
 
 
-def Greens(Rc, Zc, R, Z, limit_threading=False):
+def Greens(Rc, Zc, R, Z, limit_threading=False, scale_factor=1, out=None):
     """
     Calculate poloidal flux at (R,Z) due to a single unit of current at
     (Rc,Zc) using Greens function for the elliptic operator above. Greens
@@ -598,8 +598,10 @@ def Greens(Rc, Zc, R, Z, limit_threading=False):
     # note definition of ellipk, ellipe in scipy is K(k^2), E(k^2)
     eie, eik = threaded_elliptics_ek(k2, single_thread=limit_threading)
 
+    ct = (mu0 / (2.0 * pi)) * scale_factor
     res = ne.evaluate(
-        "(mu0 / (2.0 * pi)) * sqrt(R * Rc) * ((2.0 - k2) * eik - 2.0 * eie) / sqrt(k2)",
+        "ct * sqrt(R * Rc) * ((2.0 - k2) * eik - 2.0 * eie) / sqrt(k2)",
+        out=out,
     )
 
     return res
