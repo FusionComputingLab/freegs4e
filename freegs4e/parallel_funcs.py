@@ -106,7 +106,23 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
         # we rely on numpy behavior for the parallelization
         raise TypeError("Only numpy ndarrays are supported")
 
+    # operating on a flattened view is slightly better for load balancing
+
+    inshape = k2.shape
+
+    try:
+        rk2 = k2.reshape(-1, copy=False)
+        k2 = rk2
+    except:
+        warnings.warn(
+            "Input array has an abnormal data layout. This may affect performance"
+        )
+
     num_threads = num_threads_total // 2
+
+    # If there aren't enough elements to parallelize, don't
+    if not k2.shape or k2.shape[0] < num_threads:
+        return ellipe(k2), ellipk(k2)
 
     # output arrays
     eie = np.empty(k2.shape)
@@ -142,6 +158,8 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
                 futures, return_when=concurrent.futures.FIRST_EXCEPTION
             ).done
         )
+
+    eie, eik = eie.reshape(inshape), eik.reshape(inshape)
 
     return eie, eik
 
@@ -212,6 +230,33 @@ def threaded_clip(
             "Argument `where` of numpy ufuncs not supported by threaded_clip. Ignored."
         )
 
+    # operating on a flattened view is slightly better for load balancing
+
+    inshape = k2.shape
+
+    try:
+        rk2 = k2.reshape(-1, copy=False)
+        k2 = rk2
+    except:
+        warnings.warn(
+            "Input array has an abnormal data layout. This may affect performance"
+        )
+
+    # prepare output array
+    try:
+        rout = out.reshape(k2.shape, copy=False)
+        out = rout
+    except:
+        # parallel implementation relies on being able to get a reshaped VIEW of out
+        warnings.warn(
+            "clip could not be performed in parallel due to abnormal data layout of output array"
+        )
+        return clip(k2, amin, amax, out=out, **kwargs)
+
+    # If there aren't enough elements to parallelize, don't
+    if not k2.shape or k2.shape[0] < num_threads:
+        return clip(k2, amin, amax, out=out, **kwargs)
+
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
 
         futures = []
@@ -239,6 +284,8 @@ def threaded_clip(
                 futures, return_when=concurrent.futures.FIRST_EXCEPTION
             ).done
         )
+
+    out = out.reshape(inshape)
 
     return out
 
