@@ -519,9 +519,9 @@ class GSsparse4thOrder(GSsparse):
                     cols.append(col.flatten())
                     entries.append(entry.flatten())
 
-        all_rows = np.concat(rows)
-        all_cols = np.concat(cols)
-        all_entries = np.concat(entries)
+        all_rows = np.concatenate(rows)
+        all_cols = np.concatenate(cols)
+        all_entries = np.concatenate(entries)
 
         A = None
 
@@ -599,6 +599,7 @@ def Greens(Rc, Zc, R, Z, limit_threading=False, scale_factor=1, out=None):
     eie, eik = threaded_elliptics_ek(k2, single_thread=limit_threading)
 
     ct = (mu0 / (2.0 * pi)) * scale_factor
+
     res = ne.evaluate(
         "ct * sqrt(R * Rc) * ((2.0 - k2) * eik - 2.0 * eie) / sqrt(k2)",
         out=out,

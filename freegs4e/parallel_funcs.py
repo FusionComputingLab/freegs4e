@@ -110,10 +110,10 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
 
     inshape = k2.shape
 
-    try:
-        rk2 = k2.reshape(-1, copy=False)
-        k2 = rk2
-    except:
+    if k2.flags.forc:
+        # only reshape if k2 is contiguous, otherwise no time savings
+        k2 = k2.reshape(-1)
+    else:
         warnings.warn(
             "Input array has an abnormal data layout. This may affect performance"
         )
@@ -159,7 +159,8 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
             ).done
         )
 
-    eie, eik = eie.reshape(inshape), eik.reshape(inshape)
+    eie.resize(inshape)
+    eik.resize(inshape)
 
     return eie, eik
 
@@ -231,23 +232,20 @@ def threaded_clip(
         )
 
     # operating on a flattened view is slightly better for load balancing
-
-    inshape = k2.shape
-
-    try:
-        rk2 = k2.reshape(-1, copy=False)
-        k2 = rk2
-    except:
+    if k2.flags.forc:
+        # only reshape if k2 is contiguous, otherwise no time savings
+        k2 = k2.reshape(-1)
+    else:
         warnings.warn(
             "Input array has an abnormal data layout. This may affect performance"
         )
 
     # prepare output array
+    outshape = out.shape
     try:
-        rout = out.reshape(k2.shape, copy=False)
-        out = rout
-    except:
         # parallel implementation relies on being able to get a reshaped VIEW of out
+        out.resize(k2.shape)
+    except:
         warnings.warn(
             "clip could not be performed in parallel due to abnormal data layout of output array"
         )
@@ -285,7 +283,7 @@ def threaded_clip(
             ).done
         )
 
-    out = out.reshape(inshape)
+    out.resize(outshape)
 
     return out
 
