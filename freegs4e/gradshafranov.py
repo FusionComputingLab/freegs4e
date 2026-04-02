@@ -35,17 +35,7 @@ from .parallel_funcs import threaded_clip, threaded_elliptics_ek
 mu0 = 4e-7 * pi
 
 
-class GSoperator(ABC):
-    """
-    Parent class for all supported representations of the GS operator
-    """
-
-    # TODO: right now, all GS operator classes have wildly differing behaviors. harmonize their api
-    # using this base class (low priority)
-    pass
-
-
-class GSElliptic(GSoperator):
+class GSElliptic:
     """
     Class representing the elliptc operator within the Grad-Shafranov
     equation:
@@ -141,7 +131,7 @@ class GSElliptic(GSoperator):
         return -2.0 / dR**2 - 2.0 / dZ**2
 
 
-class GSsparse(GSoperator):
+class GSsparse:
     """
     Class representing the elliptic operator within the Grad-Shafranov
     equation:
@@ -204,6 +194,8 @@ class GSsparse(GSoperator):
             The operator matrix.
         """
 
+        # TODO: update to faster CSC version
+
         # calculate grid spacing
         dR = (self.Rmax - self.Rmin) / (nx - 1)
         dZ = (self.Zmax - self.Zmin) / (ny - 1)
@@ -242,8 +234,15 @@ class GSsparse(GSoperator):
 
         # convert to Compressed Sparse Row (CSR) format
 
-        # TODO: fix stuff here
-        return A.tocsr()
+        if format == "csc":
+            A = A.tocsc()
+        elif format == "csr":
+            A = A.tocsr()
+        else:
+            warn("Unrecognized format for sparse matrix, defaulting to csr")
+            A = A.tocsr()
+
+        return A
 
 
 class GSsparse4thOrder(GSsparse):
