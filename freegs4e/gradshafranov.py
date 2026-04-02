@@ -556,11 +556,8 @@ def Greens(Rc, Zc, R, Z, limit_threading=False, scale_factor=1, out=None):
     and K(k^2) and E(k^2) are the complete elliptic integrals of the first
     and second kind.
 
-    This function is multithreaded. Multithreading behavior can be controlled through the
-    environment variable OMP_NUM_THREADS (preferred), NUMEXPR_NUM_THREADS or programatically
-    through the use of the function set_num_threads() in freegs4e.parallel_funcs. Note that
-    by default the number of threads is limited to 32 by numexpr: for use in HPC systems, it
-    is recommended to set NUMEXPR_MAX_THREADS to the number of available cores.
+    This function is multithreaded using numexpr and freegs4e's custom parallel library. For
+    details consult the relevant section in the README.
 
     Parameters
     ----------
@@ -573,13 +570,17 @@ def Greens(Rc, Zc, R, Z, limit_threading=False, scale_factor=1, out=None):
     Z : float
         Vertical position where poloidal flux is to be calcualted [m].
     limit_threading: bool
-        If True, forces SOME internal functions, with high threading overhead,
-        to run single threaded. Multiple threads will still be used for low
-        overhead functionalities.
+        If True, forces SOME internal functions, with high threading overhead, to run single
+        threaded. Multiple threads will still be used for low overhead functionalities.
+        Recommended when the input arrays are small.
+    scale_factor: int
+        Scalar factor to apply on the final result.
+    out: ndarray
+        Pre-allocated buffer for the final result.
 
     Returns
     -------
-    float
+    ndarray
         Value of the poloidal flux at (R,Z).
     """
 
