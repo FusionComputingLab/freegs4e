@@ -36,7 +36,16 @@ from .gs_solver import GSSolver
 
 
 class MGDirect(GSSolver):
+    # This LU solver is kept because it is more convenient in multigrid solvers, it should not be used
+    # as a standalone LU solver
     def __init__(self, A, shape):
+        """
+        Initialise solver
+
+        A   - The matrix to solve
+        shape - The shape of the FD grid
+        """
+
         self.dimensions = shape
         self.solver = factorized(A.tocsc())  # LU decompose
 
@@ -54,6 +63,7 @@ class MGJacobi(GSSolver):
         Initialise solver
 
         A   - The matrix to solve
+        shape - The shape of the FD grid
         subsolver - An operator at lower resolution
         ncycle - Number of V-cycles
         niter - Number of Jacobi iterations
@@ -115,7 +125,7 @@ class MGJacobi(GSSolver):
 
 
 def createMultigridSolver(
-    nx, ny, order, nlevels=4, ncycle=1, niter=10, direct=True
+    R, Z, order, nlevels=4, ncycle=1, niter=10, direct=True
 ):
     """
     Creates a multigrid solver from a sparse solver of the given order and (highest)
@@ -123,7 +133,10 @@ def createMultigridSolver(
 
     Parameters
     -------
-    nx, ny - The highest resolution
+    R: ndarray (nr,nz)
+        ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
+    Z: ndarray (nr,nz)
+        ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
     order - The order of the internal sparse solver
     nlevels - Number of multigrid levels
     direct - Lowest level uses direct solver
@@ -139,6 +152,18 @@ def createMultigridSolver(
 
     generator = None
 
+    if R.shape != Z.shape:
+        raise ValueError(
+            f"shape mismatch: Shapes of radial grid ({R.shape}) and longitudinal grid ({Z.shape}) do not match"
+        )
+
+    Rmin = float(R[0, 0])
+    Rmax = float(R[-1, 0])
+    Zmin = float(Z[0, 0])
+    Zmax = float(Z[0, -1])
+
+    nx, ny = R.shape
+
     if order == 2:
         generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
     elif order == 4:
@@ -149,8 +174,8 @@ def createMultigridSolver(
         )
 
     mg_solver = createVcycle(
-        nx=self.nx,
-        ny=self.ny,
+        nx=nx,
+        ny=ny,
         generator=generator,
         nlevels=nlevels,
         ncycle=ncycle,

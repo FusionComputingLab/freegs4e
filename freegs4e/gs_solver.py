@@ -104,7 +104,7 @@ class GSLUSolver(GSSolver):
 
         if R.shape != Z.shape:
             raise ValueError(
-                f"shape mismatch: Shapes of radial grid ({Z.shape}) and longitudinal grid ({R.shape}) do not match"
+                f"shape mismatch: Shapes of radial grid ({R.shape}) and longitudinal grid ({Z.shape}) do not match"
             )
 
         Rmin = float(R[0, 0])
@@ -191,7 +191,7 @@ class GSDSTSolver(GSSolver):
 
         if R.shape != Z.shape:
             raise ValueError(
-                f"shape mismatch: Shapes of radial grid ({Z.shape}) and longitudinal grid ({R.shape}) do not match"
+                f"shape mismatch: Shapes of radial grid ({R.shape}) and longitudinal grid ({Z.shape}) do not match"
             )
         if order != 2:
             warnings.warn(

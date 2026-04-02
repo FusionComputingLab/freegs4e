@@ -126,8 +126,8 @@ class Equilibrium:
 
         # generate Greens function mappings (used
         # in self.psi() to speed up calculations)
-        self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
-        self._vgreen = tokamak.createPsiGreensVec(self.R, self.Z)
+        self._pgreen = self.tokamak.createPsiGreens(self.R, self.Z)
+        self._vgreen = self.tokamak.createPsiGreensVec(self.R, self.Z)
         # self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
 
         # assign plasma current
@@ -203,65 +203,11 @@ class Equilibrium:
     def setSolverVcycle(
         self, nlevels=1, ncycle=1, niter=1, direct=True, order=4
     ):
-        """
-        Sets a new linear solver based on the multigrid scheme.
-
-        This method configures a multigrid V-cycle solver and assigns it to
-        `self._solver`.
-
-        Parameters
-        ----------
-        nlevels : int
-            Number of resolution levels, including the original.
-        ncycle : int
-            Number of V-cycles to use.
-        niter : int
-            Number of linear solver (Jacobi) iterations per level.
-        direct : bool
-            If True, uses a direct solver at the coarsest level.
-        order : int
-            Order of differential operators used in calculations.
-            Must be either 2 or 4.
-        Returns
-        -------
-        None
-            This function modifies `self._solver` but does not return a value.
-        """
-
-        self.setSolver(
-            createMultigridSolver(
-                nx=self.nx,
-                ny=self.ny,
-                order=order,
-                nlevels=nlevels,
-                ncycle=ncycle,
-                niter=niter,
-                direct=direct,
-            )
-        )
+        """Deprecated. Equilibrium objects do not contain solvers"""
+        self.setSolver(None)
 
     def setSolver(self, solver):
-        """
-        Sets the linear solver to use. The given object/function must have a __call__ method
-        which takes two inputs:
-
-        solver(x, b)
-
-        where x is the initial guess and b is the right hand side (this should solve Ax = b,
-        returning the result).
-
-
-        Parameters
-        ----------
-        solver : object
-            The solver object.
-
-        Returns
-        -------
-        None
-            This function modifies `self._solver` but does not return a value.
-        """
-
+        """Deprecated. Equilibrium objects do not contain solvers"""
         self._solver = solver
 
     def callSolver(self, psi, rhs):
