@@ -29,7 +29,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numexpr as ne
 import numpy as np
-from numpy import clip
+from numpy import clip, take
 from scipy.special import ellipe, ellipk
 from threadpoolctl import ThreadpoolController
 
@@ -65,6 +65,83 @@ def set_num_threads(num_threads):
 
     # for consistency in performance, always match the no. of threads used by numexpr
     ne.set_num_threads(num_threads)
+
+
+@thread_controller.wrap(limits={"blas": 1, "openmp": 1})
+def threaded_take(a, indices, out=None, mode="raise"):
+
+    num_threads = get_num_threads()
+
+    if num_threads == 1:
+        return np.take(a, indices, out=out, mode=mode)
+
+    if out is None:
+        # output array necessary for parallel implementation
+        out = np.empty(indices.shape)
+    elif not isinstance(out, np.ndarray):
+        # we rely on numpy behavior for the parallelization
+        raise TypeError("return arrays must be of ArrayType")
+
+    if not isinstance(indices, np.ndarray):
+        # we rely on numpy behavior for the parallelization
+        raise TypeError("Only numpy ndarray indices are supported")
+
+    if not indices.shape or indices.shape[0] < num_threads:
+        return np.take(a, indices, out=out, mode=mode)
+    elif out.shape != indices.shape:
+        raise ValueError(
+            f"Shape of return array must match indices array exactly. Received {out.shape} and {indices.shape}"
+        )
+
+    # operating on a flattened view is slightly better for load balancing
+
+    if indices.flags.forc:
+        # only reshape if indices and out are contiguous, otherwise no time savings
+        try:
+            out.resize(out.size)
+            indices = indices.reshape(-1)
+        except:
+            warnings.warn(
+                "Output array has an abnormal data layout. This may affect performance"
+            )
+    else:
+        warnings.warn(
+            "Input array has an abnormal data layout. This may affect performance"
+        )
+
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+
+        futures = []
+
+        main_len = indices.shape[
+            0
+        ]  # length of dimension that will be decomposed
+        step, rem = divmod(main_len, num_threads)
+        end = 0
+
+        for i in range(num_threads):
+
+            start = end
+            end = (
+                start + step + (i + 1) * (i < rem)
+            )  # first few slices get one more element to deal with remainder
+
+            idcs_slice = indices[start:end]
+            out_slice = out[start:end]
+
+            futures.append(
+                executor.submit(take, a, idcs_slice, out=out_slice, mode=mode)
+            )
+
+        # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
+        (
+            f.result()
+            for f in concurrent.futures.wait(
+                futures, return_when=concurrent.futures.FIRST_EXCEPTION
+            ).done
+        )
+
+    return out
 
 
 @thread_controller.wrap(limits={"blas": 1, "openmp": 1})
