@@ -323,20 +323,18 @@ def plotEquilibrium(
     axis.set_ylabel("Height [m]")
 
     # plot flux contours
-    levels = linspace(amin(psi), amax(psi), 50)
+    levels = linspace(amin(psi), amax(psi), 35)
     axis.contour(eq.R, eq.Z, psi, levels=levels)
 
     # plot separatrix (from primary X-point)
-    if eq._profiles.flag_limiter:
-        label = "LCFS (limited plasma)"
-    else:
-        label = "Separatrix (primary X-point)"
     colour = "r"
     style = "solid"
     axis.contour(
-        eq.R, eq.Z, psi, levels=[eq.psi_bndry], colors=colour, linestyles=style
+        eq.R, eq.Z, psi, levels=[xpt[0][2]], colors=colour, linestyles=style
     )
-    axis.plot([], [], colour, label=label, linestyle=style)
+    axis.plot(
+        [], [], colour, label="Separatrix (primary X-point)", linestyle=style
+    )
 
     # plot extra separatrix (LCFS) if plasma limited
     if eq._profiles.flag_limiter:
@@ -346,7 +344,7 @@ def plotEquilibrium(
             eq.R,
             eq.Z,
             psi,
-            levels=[xpt[0][2]],
+            levels=[eq.psi_bndry],
             colors=colour,
             linestyles=style,
         )
@@ -354,7 +352,7 @@ def plotEquilibrium(
             [],
             [],
             colour,
-            label="Separatrix (primary X-point)",
+            label="LCFS (limited plasma)",
             linestyle=style,
         )
 
