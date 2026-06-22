@@ -164,7 +164,7 @@ class Equilibrium:
             raise ValueError(
                 f"Shape of psi grid {psi.shape} must match grid size ({nx}, {ny})."
             )
-        self.plasma_psi = psi
+        self._updatePlasmaPsi(psi)
 
     def create_psi_plasma_default(
         self, adaptive_centre=False, gpars=(0.5, 0.5, 0, 2)
@@ -1882,6 +1882,11 @@ class Equilibrium:
             / (self.plasmaCurrent() ** 2)
         )
 
+    def poloidalBeta(self):
+        """Backward-compatible alias for :meth:`poloidalBeta1`."""
+
+        return self.poloidalBeta1()
+
     def poloidalBeta2(self):
         """
         Calculates poloidal beta from the following definition:
@@ -2686,6 +2691,8 @@ class Equilibrium:
 
         if len(xpt) > 0:
             self.psi_bndry = xpt[0][2]
+            if not hasattr(self, "mask_outside_limiter"):
+                self.mask_outside_limiter = np.zeros_like(psi, dtype=float)
             self.mask = critical.inside_mask(
                 self.R, self.Z, psi, opt, xpt, self.mask_outside_limiter
             )

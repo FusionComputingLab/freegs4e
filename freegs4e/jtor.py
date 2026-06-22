@@ -36,6 +36,52 @@ class Profile(object):
     Base class from which profiles classes can inherit.
     """
 
+    def Jtor(self, R, Z, psi, psi_bndry=None):
+        """
+        Calculate the toroidal current density on the computational grid.
+
+        This convenience wrapper combines the generic critical-point and
+        core-mask identification in :meth:`Jtor_part1` with the profile-specific
+        current-density calculation implemented by each subclass in
+        :meth:`Jtor_part2`.
+
+        Parameters
+        ----------
+        R : np.ndarray
+            Radial coordinates of the grid points.
+        Z : np.ndarray
+            Vertical coordinates of the grid points.
+        psi : np.ndarray
+            Total poloidal field flux at each grid point [Webers/2pi].
+        psi_bndry : float, optional
+            Value of the poloidal field flux at the plasma boundary.
+
+        Returns
+        -------
+        np.array
+            Toroidal current density on the computational grid [A/m^2].
+        """
+
+        if not hasattr(self, "mask_inside_limiter"):
+            self.mask_inside_limiter = np.ones_like(psi, dtype=bool)
+        if not hasattr(self, "mask_outside_limiter"):
+            self.mask_outside_limiter = np.zeros_like(psi, dtype=float)
+
+        opt, xpt, core_mask, psi_bndry = self.Jtor_part1(
+            R,
+            Z,
+            psi,
+            psi_bndry=psi_bndry,
+            mask_outside_limiter=self.mask_outside_limiter,
+        )
+        if core_mask is None:
+            core_mask = np.ones_like(psi, dtype=bool)
+        self.psi_axis = opt[0][2]
+        self.psi_bndry = psi_bndry
+        self.diverted_core_mask = core_mask
+        self.limiter_core_mask = core_mask
+        return self.Jtor_part2(R, Z, psi, opt[0][2], psi_bndry, core_mask)
+
     def pressure(self, psinorm):
         """
         Calculate the 1D pressure profile in the plasma (vs. the normalised

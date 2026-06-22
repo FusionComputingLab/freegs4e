@@ -184,7 +184,7 @@ def read(fh, cocos=1):
 
     cocos   - COordinate COnventions. Not fully handled yet,
               only whether psi is divided by 2pi or not.
-              if < 10 then psi is divided by 2pi, otherwise not.
+              if > 10 then psi is divided by 2pi, otherwise not.
 
     Returns
     -------

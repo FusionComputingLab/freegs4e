@@ -180,7 +180,7 @@ def read(
     cocos : integer
         COordinate COnventions. Not fully handled yet,
         only whether psi is divided by 2pi or not.
-        if < 10 then psi is divided by 2pi, otherwise not.
+        if > 10 then psi is divided by 2pi, otherwise not.
     domain : list/tuple of 4 elements
         Sets the (R,Z) domain to solve for
         (Rmin, Rmax, Zmin, Zmax)
@@ -265,16 +265,18 @@ def read(
 
     psinorm = linspace(0.0, 1.0, data["nx"], endpoint=True)
 
-    # Create a spline fit to pressure, f and f**2
+    # Create spline fits to pressure, f, pprime and ffprime.
+    # G-EQDSK stores pprime = dp/dpsi and ffprime = F dF/dpsi directly,
+    # so use those arrays rather than reconstructing them from p and F.
     p_spl = interpolate.InterpolatedUnivariateSpline(psinorm, data["pres"])
     pprime_spl = interpolate.InterpolatedUnivariateSpline(
-        psinorm, data["pres"] / psirange
-    ).derivative()
+        psinorm, data["pprime"]
+    )
 
     f_spl = interpolate.InterpolatedUnivariateSpline(psinorm, data["fpol"])
     ffprime_spl = interpolate.InterpolatedUnivariateSpline(
-        psinorm, 0.5 * data["fpol"] ** 2 / psirange
-    ).derivative()
+        psinorm, data["ffprime"]
+    )
 
     q_spl = interpolate.InterpolatedUnivariateSpline(psinorm, data["qpsi"])
 
@@ -304,13 +306,20 @@ def read(
             return reshape(q_spl(ravel(psinorm)), psinorm.shape)
         return q_spl(psinorm)
 
-    # Create a set of profiles to calculate toroidal current density Jtor
-    profiles = jtor.ProfilesPprimeFfprime(
-        pprime_func,
-        ffprime_func,
+    # Create a profile object to calculate toroidal current density Jtor.
+    # G-EQDSK supplies p, F and their derivatives on a normalised psi grid;
+    # the derivatives used here are with respect to the physical poloidal flux.
+    # Keep Ip_logic disabled so the imported pprime and ffprime profiles are
+    # used directly rather than renormalised after the first Jtor evaluation.
+    profiles = jtor.GeneralPprimeFFprime(
+        data["cpasma"],
         data["rcentr"] * data["bcentr"],
-        p_func=p_func,
-        f_func=f_func,
+        psinorm,
+        pprime_data=pprime_func(psinorm),
+        ffprime_data=ffprime_func(psinorm),
+        p_data=p_func(psinorm),
+        f_data=f_func(psinorm),
+        Ip_logic=False,
     )
 
     # Calculate normalised psi.
@@ -477,14 +486,12 @@ def read(
     psi = eq.psi()
     opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
 
-    if xpoint:
+    if len(xpoint) > 0:
         # Use x-point and o-point constraints because the size of the grid may be changed
         # in which case the 2D psi constraints would fail
 
         # Find the separatrix
-        isoflux = critical.find_separatrix(
-            eq, opoint, xpoint, ntheta=ntheta, psi=psi, axis=axis
-        )
+        isoflux = critical.find_separatrix(eq, ntheta=ntheta, axis=axis)
 
         # Save the control system to eq
         eq.control = control.constrain(
