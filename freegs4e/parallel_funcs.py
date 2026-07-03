@@ -87,6 +87,7 @@ def threaded_take(a, indices, out=None, mode="raise"):
         raise TypeError("Only numpy ndarray indices are supported")
 
     if not indices.shape or indices.shape[0] < num_threads:
+        # TODO: check this works when I add axis arg
         return np.take(a, indices, out=out, mode=mode)
     elif out.shape != indices.shape:
         raise ValueError(
@@ -199,6 +200,7 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
 
     # If there aren't enough elements to parallelize, don't
     if not k2.shape or k2.shape[0] < num_threads:
+        k2 = k2.reshape(inshape)
         return ellipe(k2), ellipk(k2)
 
     # output arrays
@@ -308,6 +310,11 @@ def threaded_clip(
             "Argument `where` of numpy ufuncs not supported by threaded_clip. Ignored."
         )
 
+    # Perform resizing when needed and for efficiency
+
+    inshape = k2.shape
+    outshape = out.shape
+
     # operating on a flattened view is slightly better for load balancing
     if k2.flags.forc:
         # only reshape if k2 is contiguous, otherwise no time savings
@@ -317,8 +324,13 @@ def threaded_clip(
             "Input array has an abnormal data layout. This may affect performance"
         )
 
+    # If there aren't enough elements to parallelize, don't
+    # It is important for this to happen BEFORE resizing out
+    if not k2.shape or k2.shape[0] < num_threads:
+        k2 = k2.reshape(inshape)
+        return clip(k2, amin, amax, out=out, **kwargs)
+
     # prepare output array
-    outshape = out.shape
     try:
         # parallel implementation relies on being able to get a reshaped VIEW of out
         out.resize(k2.shape)
@@ -326,10 +338,6 @@ def threaded_clip(
         warnings.warn(
             "clip could not be performed in parallel due to abnormal data layout of output array"
         )
-        return clip(k2, amin, amax, out=out, **kwargs)
-
-    # If there aren't enough elements to parallelize, don't
-    if not k2.shape or k2.shape[0] < num_threads:
         return clip(k2, amin, amax, out=out, **kwargs)
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
