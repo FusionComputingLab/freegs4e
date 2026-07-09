@@ -76,10 +76,16 @@ class Profile(object):
         )
         if core_mask is None:
             core_mask = np.ones_like(psi, dtype=bool)
+        uses_xpoint_boundary = len(xpt) > 0 and np.isclose(
+            psi_bndry, xpt[0][2]
+        )
+        self.opt = opt
+        self.xpt = xpt
         self.psi_axis = opt[0][2]
         self.psi_bndry = psi_bndry
         self.diverted_core_mask = core_mask
         self.limiter_core_mask = core_mask
+        self.flag_limiter = not uses_xpoint_boundary
         return self.Jtor_part2(R, Z, psi, opt[0][2], psi_bndry, core_mask)
 
     def pressure(self, psinorm):

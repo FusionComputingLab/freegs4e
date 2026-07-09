@@ -114,6 +114,56 @@ def test_writeread():
         numpy.testing.assert_allclose(data2[key], data[key])
 
 
+def test_cocos_flux_derivative_scaling():
+    """Test that COCOS flux conversion also rescales psi derivatives."""
+
+    nx = 5
+    ny = 5
+    data = {
+        "nx": nx,
+        "ny": ny,
+        "rdim": 2.0,
+        "zdim": 1.5,
+        "rcentr": 1.2,
+        "bcentr": 2.42,
+        "rleft": 0.5,
+        "zmid": 0.1,
+        "rmagx": 1.1,
+        "zmagx": 0.2,
+        "simagx": -2.3,
+        "sibdry": 0.21,
+        "cpasma": 1234521,
+        "fpol": numpy.linspace(1.0, 2.0, nx),
+        "pres": numpy.linspace(10.0, 0.0, nx),
+        "ffprime": numpy.linspace(0.2, 0.6, nx),
+        "pprime": numpy.linspace(-4.0, -1.0, nx),
+        "qpsi": numpy.linspace(1.0, 3.0, nx),
+        "psi": numpy.arange(nx * ny).reshape(nx, ny),
+    }
+
+    output = StringIO()
+    _geqdsk.write(data, output)
+    output.seek(0)
+
+    converted = _geqdsk.read(output, cocos=11)
+
+    numpy.testing.assert_allclose(
+        converted["psi"], data["psi"] / (2 * numpy.pi)
+    )
+    numpy.testing.assert_allclose(
+        converted["simagx"], data["simagx"] / (2 * numpy.pi)
+    )
+    numpy.testing.assert_allclose(
+        converted["sibdry"], data["sibdry"] / (2 * numpy.pi)
+    )
+    numpy.testing.assert_allclose(
+        converted["pprime"], data["pprime"] * (2 * numpy.pi)
+    )
+    numpy.testing.assert_allclose(
+        converted["ffprime"], data["ffprime"] * (2 * numpy.pi)
+    )
+
+
 def test_equilibrium_geqdsk_write_read():
     """Test that a seeded diverted equilibrium can be saved and loaded."""
 
