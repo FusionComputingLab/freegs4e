@@ -35,10 +35,10 @@ from .gradshafranov import GSsparse, GSsparse4thOrder
 from .gs_solver import GSSolver
 
 
-class MGDirect(GSSolver):
+class MGDirect:
     # This LU solver is kept because it is more convenient in multigrid solvers, it should not be used
     # as a standalone LU solver
-    def __init__(self, A, shape):
+    def __init__(self, A):
         """
         Initialise solver
 
@@ -46,7 +46,7 @@ class MGDirect(GSSolver):
         shape - The shape of the FD grid
         """
 
-        self.dimensions = shape
+        #        self.dimensions = shape
         self.solver = factorized(A.tocsc())  # LU decompose
 
     def solve(self, x, b):
@@ -56,9 +56,12 @@ class MGDirect(GSSolver):
 
         return reshape(x, b.shape)
 
+    def __call__(self, x, b):
+        return self.solve(x, b)
 
-class MGJacobi(GSSolver):
-    def __init__(self, A, shape, ncycle=4, niter=10, subsolver=None):
+
+class MGJacobi:
+    def __init__(self, A, ncycle=4, niter=10, subsolver=None):
         """
         Initialise solver
 
@@ -70,7 +73,6 @@ class MGJacobi(GSSolver):
 
         """
         self.A = A
-        self.dimensions = shape
         self.diag = A.diagonal()
         self.subsolver = subsolver
         self.niter = niter
@@ -225,19 +227,15 @@ def createVcycle(
         # Create the sparse matrix
         A = generator(nx, ny)
         # Create the solver
-        return MGJacobi(
-            A, shape=(nx, ny), niter=niter, subsolver=subsolver, ncycle=ncycle
-        )
+        return MGJacobi(A, niter=niter, subsolver=subsolver, ncycle=ncycle)
 
     # At lowest level
 
     # Create the sparse matrix
     A = generator(nx, ny)
     if direct:
-        return MGDirect(A, shape=(nx, ny))
-    return MGJacobi(
-        A, shape=(nx, ny), niter=niter, ncycle=ncycle, subsolver=None
-    )
+        return MGDirect(A)
+    return MGJacobi(A, niter=niter, ncycle=ncycle, subsolver=None)
 
 
 def smoothJacobi(A, x, b, dx, dy):
