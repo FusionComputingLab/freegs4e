@@ -30,6 +30,7 @@ from concurrent.futures import ThreadPoolExecutor
 import numexpr as ne
 import numpy as np
 from numpy import clip, take
+from numpy.lib.array_utils import normalize_axis_index
 from scipy.special import ellipe, ellipk
 from threadpoolctl import ThreadpoolController
 
@@ -68,12 +69,12 @@ def set_num_threads(num_threads):
 
 
 @thread_controller.wrap(limits={"blas": 1, "openmp": 1})
-def threaded_take(a, indices, out=None, mode="raise"):
+def threaded_take(a, indices, axis=None, out=None, mode="raise"):
 
     num_threads = get_num_threads()
 
     if num_threads == 1:
-        return np.take(a, indices, out=out, mode=mode)
+        return np.take(a, indices, axis=axis, out=out, mode=mode)
 
     if out is None:
         # output array necessary for parallel implementation
@@ -86,37 +87,56 @@ def threaded_take(a, indices, out=None, mode="raise"):
         # we rely on numpy behavior for the parallelization
         raise TypeError("Only numpy ndarray indices are supported")
 
+    # determine the correct output shape
+    if axis is not None:
+        inshape = a.shape
+        idxshape = indices.shape
+        if not axis < len(inshape):
+            raise ValueError(
+                f"Axis {axis} not in input array of shape {inshape}"
+            )
+        outshape = list(inshape[:axis]) + list(idxshape)
+        if axis not in (-1, len(inshape) - 1):
+            outshape += list(inshape[axis + 1 :])
+
+        outshape = tuple(outshape)
+
+    else:
+        outshape = indices.shape
+
     if not indices.shape or indices.shape[0] < num_threads:
-        # TODO: check this works when I add axis arg
-        return np.take(a, indices, out=out, mode=mode)
-    elif out.shape != indices.shape:
+        return np.take(a, indices, axis=axis, out=out, mode=mode)
+    elif out.shape != outshape:
         raise ValueError(
-            f"Shape of return array must match indices array exactly. Received {out.shape} and {indices.shape}"
+            f"Incorrect shape of output buffer: received {out.shape} but expected {outshape}"
         )
 
     # operating on a flattened view is slightly better for load balancing
 
-    if indices.flags.forc:
-        # only reshape if indices and out are contiguous, otherwise no time savings
-        try:
-            out.resize(out.size)
-            indices = indices.reshape(-1)
-        except:
+    if axis is None:
+        # no reshaping if axis (because shape would matter)
+
+        if indices.flags.forc:
+            # only reshape if indices and out are contiguous, otherwise no time savings
+            try:
+                out.resize(out.size)
+                indices = indices.reshape(-1)
+            except:
+                warnings.warn(
+                    "Output array has an abnormal data layout. This may affect performance"
+                )
+        else:
             warnings.warn(
-                "Output array has an abnormal data layout. This may affect performance"
+                "Input array has an abnormal data layout. This may affect performance"
             )
-    else:
-        warnings.warn(
-            "Input array has an abnormal data layout. This may affect performance"
-        )
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
 
         futures = []
 
-        main_len = indices.shape[
-            0
-        ]  # length of dimension that will be decomposed
+        # length of dimension that will be decomposed
+        main_len = indices.shape[0]
+
         step, rem = divmod(main_len, num_threads)
         end = 0
 
@@ -130,8 +150,16 @@ def threaded_take(a, indices, out=None, mode="raise"):
             idcs_slice = indices[start:end]
             out_slice = out[start:end]
 
+            # if non-zero axis is provided, output array needs to be sliced along said axis
+            if axis:
+                normalized_axis = normalize_axis_index(axis, ndim=a.ndim)
+                idxr = (slice(None),) * normalized_axis + (slice(start, end),)
+                out_slice = out[idxr]
+
             futures.append(
-                executor.submit(take, a, idcs_slice, out=out_slice, mode=mode)
+                executor.submit(
+                    take, a, idcs_slice, axis=axis, out=out_slice, mode=mode
+                )
             )
 
         # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
