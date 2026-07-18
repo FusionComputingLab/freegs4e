@@ -1,6 +1,6 @@
-numpy<2.0
-scipy~=1.9
-matplotlib~=3.0
-h5py~=3.11
-numba~=0.60
-Shapely~=2.0.6
+numpy>=2.0,<2.5
+scipy~=1.18
+matplotlib~=3.11
+h5py~=3.16
+numba~=0.66
+Shapely~=2.1
