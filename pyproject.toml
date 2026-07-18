@@ -10,7 +10,7 @@ authors = [
 ]
 description = "Free boundary tokamak plasma equilibrium Grad-Shafranov solver for time evolution"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
