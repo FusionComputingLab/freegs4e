@@ -178,23 +178,22 @@ class Profile(object):
             if hasattr(self, "diverted_core_mask"):
                 if self.diverted_core_mask is not None:
                     previous_core_size = np.sum(self.diverted_core_mask)
-                    skipped_xpts = 0
                     # check size change
                     check = (
                         np.sum(diverted_core_mask) / previous_core_size < 0.5
                     )
-                    # check there's more candidates
-                    check *= len(xpt) > 1
-                    while check:
-                        # try using second xpt as primary xpt
+                    candidate_index = 1
+                    while check and candidate_index < len(xpt):
+                        # try using the next xpt as primary xpt
+                        candidate_xpt = xpt[candidate_index:]
                         alt_diverted_core_mask = critical.inside_mask(
                             R,
                             Z,
                             psi,
                             opt,
-                            xpt[1:],
+                            candidate_xpt,
                             mask_outside_limiter,
-                            xpt[1, 2],
+                            candidate_xpt[0, 2],
                         )
                         # check the alternative Xpoint gives rise to a valid core
                         edge_pixels = np.sum(
@@ -202,8 +201,8 @@ class Profile(object):
                         )
                         if edge_pixels == 0:
                             # the candidate is valid
-                            xpt = xpt[1:]
-                            psi_bndry = xpt[1, 2]
+                            xpt = candidate_xpt
+                            psi_bndry = xpt[0, 2]
                             diverted_core_mask = alt_diverted_core_mask.copy()
 
                             # check if there could be better candidates
@@ -211,8 +210,9 @@ class Profile(object):
                                 np.sum(diverted_core_mask) / previous_core_size
                                 < 0.5
                             )
-                            # check there's more candidates
-                            check *= len(xpt) > 1
+                            candidate_index = 1
+                        else:
+                            candidate_index += 1
         else:
             # No X-points
             psi_bndry = psi[0, 0]
