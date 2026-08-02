@@ -1568,13 +1568,17 @@ class Machine:
         return psi_coils
 
     def getPsitokamak(self, vgreen):
-        """Uses self.current_vec and vgreen to calculate the plasma flux from all
-        coils, active and passive
+        """Calculate plasma flux from all active and passive coil currents.
+
+        The leading axis of ``vgreen`` indexes coils. Flattening the spatial
+        axes expresses the weighted sum as one matrix multiplication, avoiding
+        the full-sized temporary array created by broadcast multiplication.
         """
-        tokamak_psi = np.sum(
-            vgreen * self.current_vec[:, np.newaxis, np.newaxis], axis=0
-        )
-        return tokamak_psi
+        spatial_shape = vgreen.shape[1:]
+        return (
+            self.current_vec
+            @ vgreen.reshape(vgreen.shape[0], np.prod(spatial_shape))
+        ).reshape(spatial_shape)
 
     def Br(self, R, Z):
         """
