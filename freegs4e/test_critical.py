@@ -100,7 +100,45 @@ def test_mask_zero_psi_bndry():
     assert np.isclose(opoints[0][1], z0, atol=1.0 / ny)
 
     mask = critical.core_mask(r2d, z2d, psi, opoints, xpoints, psi_bndry=0.0)
+    inside_mask = critical.inside_mask(
+        r2d, z2d, psi, opoints, xpoints, psi_bndry=0.0
+    )
+    inside_mask_without_guard = critical.inside_mask(
+        r2d, z2d, psi, opoints, xpoints, psi_bndry=0.0, use_geom=False
+    )
 
     # Some of the mask must equal 1, some 0
     assert np.any(np.equal(mask, 1))
     assert np.any(np.equal(mask, 0))
+    assert np.array_equal(inside_mask, inside_mask_without_guard)
+
+
+def test_inside_mask_single_xpoint_does_not_apply_double_null_guard():
+    nx = 21
+    ny = 41
+
+    r1d = np.linspace(0.5, 1.5, nx)
+    z1d = np.linspace(-1.0, 1.0, ny)
+    r2d, z2d = np.meshgrid(r1d, z1d, indexing="ij")
+
+    psi = (r2d - 1.0) ** 2 + z2d**2
+    opoints = np.array([[1.0, 0.0, 0.0]])
+    xpoints = np.array([[1.0, -0.8, 0.64]])
+
+    mask = critical.inside_mask(r2d, z2d, psi, opoints, xpoints)
+
+    assert mask.shape == psi.shape
+    assert mask.dtype == bool
+    assert np.any(mask)
+
+
+def test_geom_inside_mask_with_horizontally_aligned_xpoint():
+    r1d = np.linspace(0.5, 1.5, 21)
+    z1d = np.linspace(-1.0, 1.0, 41)
+    r2d, z2d = np.meshgrid(r1d, z1d, indexing="ij")
+    opoints = np.array([[1.5, 0.0, 1.0]])
+    xpoints = np.array([[1.0, 0.0, 0.0]])
+
+    mask = critical.geom_inside_mask(r2d, z2d, opoints, xpoints)
+
+    assert np.array_equal(mask, r2d > 1.0)
