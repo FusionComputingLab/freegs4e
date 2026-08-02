@@ -84,3 +84,28 @@ def test_coil_forces_unequal():
     # Vertical force is equal and opposite
     assert math.isclose(forces["P1"][1], -forces["P2"][1])
     assert forces["P1"][1] < 0.0  # Force downward towards other coil
+
+
+def test_get_psi_tokamak_matches_weighted_green_sum():
+    """The optimized contraction must preserve the coil-weighted flux sum."""
+
+    tokamak = machine.Machine(
+        [
+            ("P1", machine.Coil(1.0, 0.5)),
+            ("P2", machine.Coil(1.5, 0.0)),
+            ("P3", machine.Coil(2.0, -0.5)),
+        ]
+    )
+    tokamak.set_all_coil_currents(np.array([125.0, -40.0, 310.0]))
+
+    vgreen = np.random.default_rng(42).normal(size=(3, 17, 25))
+    expected = np.sum(
+        vgreen * tokamak.current_vec[:, np.newaxis, np.newaxis], axis=0
+    )
+
+    np.testing.assert_allclose(tokamak.getPsitokamak(vgreen), expected)
+
+    empty_vgreen = np.empty((0, 17, 25))
+    np.testing.assert_array_equal(
+        machine.Machine([]).getPsitokamak(empty_vgreen), np.zeros((17, 25))
+    )
