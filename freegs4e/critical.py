@@ -845,7 +845,7 @@ def inside_mask(
         Total poloidal flux on the plasma boundary [Webers/2pi].
     use_geom : bool
         Use (refined) geom_inside_mask function in conjuction with inside_mask_
-        to find the mask (if set to True).
+        to find the mask when at least one X-point is available (if set to True).
 
     Returns
     -------
@@ -857,11 +857,11 @@ def inside_mask(
     mask = inside_mask_(
         R, Z, psi, opoint, xpoint, mask_outside_limiter, psi_bndry
     )
-    if use_geom:
+    if use_geom and len(xpoint) > 0:
         # cure flooding
         mask = mask * geom_inside_mask(R, Z, opoint, xpoint)
         # apply geometric masking criterion to second Xpoint if close to double null
-        if len(xpoint > 1):
+        if len(xpoint) > 1:
             if (
                 np.abs(
                     (xpoint[0, 2] - xpoint[1, 2])
@@ -878,6 +878,7 @@ def geom_inside_mask(R, Z, opoint, xpoint):
 
     This function excludes grid regions based on a line perpendicular
     to the segment from the O-point to the primary X-point in the plasma core.
+    A dot product retains the half-plane containing the O-point.
 
     Parameters
     ----------
@@ -897,12 +898,10 @@ def geom_inside_mask(R, Z, opoint, xpoint):
         the core and 0 denostes a point outside.
     """
 
-    slope = -(opoint[0, 0] - xpoint[0, 0]) / (opoint[0, 1] - xpoint[0, 1])
-    interc = xpoint[0, 1] - slope * xpoint[0, 0]
-
+    delta_R = opoint[0, 0] - xpoint[0, 0]
+    delta_Z = opoint[0, 1] - xpoint[0, 1]
     geom_mask = (
-        (opoint[0, 1] - (slope * opoint[0, 0] + interc))
-        * (Z - (slope * R + interc))
+        delta_R * (R - xpoint[0, 0]) + delta_Z * (Z - xpoint[0, 1])
     ) > 0
 
     return geom_mask
