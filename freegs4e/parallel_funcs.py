@@ -76,26 +76,29 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
     if num_threads == 1:
         return np.take(a, indices, axis=axis, out=out, mode=mode)
 
-    if out is None:
-        # output array necessary for parallel implementation
-        out = np.empty(indices.shape)
-    elif not isinstance(out, np.ndarray):
-        # we rely on numpy behavior for the parallelization
-        raise TypeError("return arrays must be of ArrayType")
+    # perform checks on indices array
 
     if not isinstance(indices, np.ndarray):
         # we rely on numpy behavior for the parallelization
         raise TypeError("Only numpy ndarray indices are supported")
 
+    elif not indices.shape or indices.shape[0] < num_threads:
+        # don't parallelize if there are less indices than threads
+        return np.take(a, indices, axis=axis, out=out, mode=mode)
+
     # determine the correct output shape
+
+    outshape = None
+
     if axis is not None:
         inshape = a.shape
         idxshape = indices.shape
+
         if not axis < len(inshape):
-            raise ValueError(
-                f"Axis {axis} not in input array of shape {inshape}"
-            )
+            raise np.exceptions.AxisError(axis, len(inshape))
+
         outshape = list(inshape[:axis]) + list(idxshape)
+
         if axis not in (-1, len(inshape) - 1):
             outshape += list(inshape[axis + 1 :])
 
@@ -104,14 +107,20 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
     else:
         outshape = indices.shape
 
-    if not indices.shape or indices.shape[0] < num_threads:
-        return np.take(a, indices, axis=axis, out=out, mode=mode)
+    # perform checks on output array
+
+    if out is None:
+        # output array necessary for parallel implementation
+        out = np.empty(outshape)
+    elif not isinstance(out, np.ndarray):
+        # we rely on numpy behavior for the parallelization
+        raise TypeError("return arrays must be of ArrayType")
     elif out.shape != outshape:
         raise ValueError(
             f"Incorrect shape of output buffer: received {out.shape} but expected {outshape}"
         )
 
-    # operating on a flattened view is slightly better for load balancing
+    # try to flatten arrays for better load balancing
 
     if axis is None:
         # no reshaping if axis (because shape would matter)
@@ -129,6 +138,8 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
             warnings.warn(
                 "Input array has an abnormal data layout. This may affect performance"
             )
+
+    # launch threads
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
 
@@ -169,6 +180,11 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
                 futures, return_when=concurrent.futures.FIRST_EXCEPTION
             ).done
         )
+
+    # reshape if flattened
+    if out.shape != outshape:
+        # there should only be a shape mismatch if we resized alread, so it should be safe to do again
+        out.resize(outshape)
 
     return out
 

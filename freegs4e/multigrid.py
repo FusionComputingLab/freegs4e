@@ -125,6 +125,9 @@ class MGJacobi:
 
         return x.reshape(xi.shape)
 
+    def __call__(self, xi, bi, ncycle=None, niter=None):
+        return self.solve(xi, bi, ncycle, niter)
+
 
 def createMultigridSolver(
     R, Z, order, nlevels=4, ncycle=1, niter=10, direct=True
