@@ -6,7 +6,9 @@ from numpy import allclose
 import freegs4e
 
 
-@pytest.mark.xfail  # TODO: test has been failing for some time now
+@pytest.mark.xfail(
+    reason="fails because of the removal of solver in freegs4e Equilibrium, but has an older issue with opoints since v 0.12.0 at least"
+)
 def test_readwrite():
     """Test reading/writing to a file round-trip"""
 

@@ -27,7 +27,7 @@ def test_one_opoint():
     assert np.isclose(opoints[0][1], z0, atol=1.0 / ny)
 
 
-@pytest.mark.xfail  # TODO: this test has been failing for some time now
+@pytest.mark.xfail(reason="Has been failing at least since v.0.12.0, 09/01/26")
 def test_one_xpoint():
     nx = 65
     ny = 65
