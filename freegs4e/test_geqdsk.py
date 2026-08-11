@@ -174,7 +174,9 @@ def test_equilibrium_geqdsk_write_read():
     output.seek(0)
 
     raw_data = _geqdsk.read(output)
-    psinorm = numpy.linspace(0.0, 1.0, raw_data["nx"], endpoint=False)
+    psinorm = numpy.linspace(0.0, 1.0, raw_data["nx"], endpoint=True)
+    numpy.testing.assert_allclose(raw_data["pres"], eq.pressure(psinorm))
+    numpy.testing.assert_allclose(raw_data["fpol"], eq.fpol(psinorm))
     numpy.testing.assert_allclose(raw_data["pprime"], eq.pprime(psinorm))
     numpy.testing.assert_allclose(raw_data["ffprime"], eq.ffprime(psinorm))
 
@@ -183,4 +185,17 @@ def test_equilibrium_geqdsk_write_read():
 
     assert numpy.all(numpy.isfinite(loaded.psi()))
     assert numpy.isfinite(loaded.plasmaCurrent())
-    assert numpy.isclose(loaded.pressure(0.0), eq.pressure(0.0))
+
+    profile_points = numpy.linspace(0.0, 1.0, 9, endpoint=True)
+    for loaded_profile, reference_profile in [
+        (loaded.pressure, eq.pressure),
+        (loaded.fpol, eq.fpol),
+        (loaded.pprime, eq.pprime),
+        (loaded.ffprime, eq.ffprime),
+    ]:
+        numpy.testing.assert_allclose(
+            loaded_profile(profile_points),
+            reference_profile(profile_points),
+            rtol=1e-7,
+            atol=1e-8,
+        )

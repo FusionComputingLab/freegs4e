@@ -87,9 +87,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
     data["cpasma"] = eq.plasmaCurrent()  # Plasma current [A]
 
-    psinorm = linspace(
-        0.0, 1.0, nx, endpoint=False
-    )  # Does not include separatrix
+    psinorm = linspace(0.0, 1.0, nx, endpoint=True)
 
     data["fpol"] = eq.fpol(psinorm)
     data["pres"] = eq.pressure(psinorm)
