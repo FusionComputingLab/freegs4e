@@ -29,7 +29,7 @@ import numpy as np
 from numpy import pi
 from scipy.sparse import csc_array, csr_array, eye
 
-from .parallel_funcs import threaded_clip, threaded_elliptics_ek
+from .parallel import threaded_clip, threaded_elliptics_ek
 
 # magnetic permeability of free space
 mu0 = 4e-7 * pi
