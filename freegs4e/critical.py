@@ -355,17 +355,10 @@ def scan_for_crit(R, Z, psi):
 
     dR = R[1, 0] - R[0, 0]
     dZ = Z[0, 1] - Z[0, 0]
-    psiR = np.zeros_like(psi)
-    psiZ = np.zeros_like(psi)
-    psiR[1:-1, 1:-1] = 0.5 * (psi[2:, 1:-1] - psi[:-2, 1:-1]) / dR
-    psiZ[1:-1, 1:-1] = 0.5 * (psi[1:-1, 2:] - psi[1:-1, :-2]) / dZ
-    #
-    #    psiR[0,:]=(psi[1,:]-psi[0,:])/dR
-    #     psiR[-1,:]=(psi[-1,:]-psi[-2,:])/dR
-    #     psiR[1:-1,0]=(psi[1:,0]-psi[:-1,0])/dR
-    #     psiR[1:-1,-1]=(psi[1:,-1]-psi[:-1,-0])/dR
-    #
-    Bp2 = psiR**2 + psiZ**2  # /R[:,:]**2
+    Bp2 = np.zeros_like(psi)
+    Bp2[1:-1, 1:-1] = (0.5 * (psi[2:, 1:-1] - psi[:-2, 1:-1]) / dR) ** 2 + (
+        0.5 * (psi[1:-1, 2:] - psi[1:-1, :-2]) / dZ
+    ) ** 2
     #
     xpoint = [(-999.0, -999.0, -999.0)]
     opoint = [(-999.0, -999.0, -999.0)]
@@ -385,7 +378,8 @@ def scan_for_crit(R, Z, psi):
                 # Found local minimum
                 R0 = R[i, j]
                 Z0 = Z[i, j]
-                fR, fZ = psiR[i, j], psiZ[i, j]
+                fR = 0.5 * (psi[i + 1, j] - psi[i - 1, j]) / dR
+                fZ = 0.5 * (psi[i, j + 1] - psi[i, j - 1]) / dZ
                 fRR = (psi[i + 1, j] - 2 * psi[i, j] + psi[i - 1, j]) / dR**2
                 fZZ = (psi[i, j + 1] - 2 * psi[i, j] + psi[i, j - 1]) / dZ**2
                 fRZ = (
@@ -861,7 +855,7 @@ def inside_mask(
         # cure flooding
         mask = mask * geom_inside_mask(R, Z, opoint, xpoint)
         # apply geometric masking criterion to second Xpoint if close to double null
-        if len(xpoint > 1):
+        if len(xpoint) > 1:
             if (
                 np.abs(
                     (xpoint[0, 2] - xpoint[1, 2])

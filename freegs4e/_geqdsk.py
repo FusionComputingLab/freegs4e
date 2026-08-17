@@ -184,7 +184,7 @@ def read(fh, cocos=1):
 
     cocos   - COordinate COnventions. Not fully handled yet,
               only whether psi is divided by 2pi or not.
-              if < 10 then psi is divided by 2pi, otherwise not.
+              if > 10 then psi is divided by 2pi, otherwise not.
 
     Returns
     -------
@@ -288,6 +288,11 @@ def read(fh, cocos=1):
     if cocos > 10:
         for var in ["psi", "simagx", "sibdry"]:
             data[var] /= 2 * pi
+        # pprime and ffprime are derivatives with respect to psi. If the
+        # flux coordinate is divided by 2pi, derivatives with respect to that
+        # coordinate must be multiplied by 2pi.
+        for var in ["pprime", "ffprime"]:
+            data[var] *= 2 * pi
 
     nbdry = next(values)
     nlim = next(values)
