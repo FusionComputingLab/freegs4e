@@ -31,6 +31,27 @@ def test_psinorm_range():
         assert np.isfinite(profiles.ffprime(-0.32))
 
 
+def test_profile_jtor_stores_plotting_metadata():
+    """Test that the generic Jtor wrapper records downstream metadata."""
+
+    profiles = jtor.ConstrainBetapIp(1.0, 2e5, 2.0)
+    R, Z = np.meshgrid(
+        np.linspace(0.5, 1.5, 33), np.linspace(-1, 1, 33), indexing="ij"
+    )
+    psi = np.exp((-((R - 1.0) ** 2) - Z**2) * 3) + np.exp(
+        (-((R - 1.0) ** 2) - (Z + 1) ** 2) * 3
+    )
+
+    profiles.Jtor(R, Z, psi)
+
+    assert hasattr(profiles, "opt")
+    assert hasattr(profiles, "xpt")
+    assert hasattr(profiles, "flag_limiter")
+    assert hasattr(profiles, "psi_axis")
+    assert hasattr(profiles, "psi_bndry")
+    assert hasattr(profiles, "diverted_core_mask")
+    assert hasattr(profiles, "limiter_core_mask")
+    
 def _continuity_test_profile(shape):
     profiles = jtor.ConstrainPaxisIp(1e3, 2e5, 2.0)
     profiles.mask_inside_limiter = np.ones(shape, dtype=bool)
