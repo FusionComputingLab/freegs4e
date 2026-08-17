@@ -870,26 +870,24 @@ def inside_mask(
 def geom_inside_mask(R, Z, opoint, xpoint):
     """
 
-    This function excludes grid regions based on a line perpendicular
-    to the segment from the O-point to the primary X-point in the plasma core.
-    A dot product retains the half-plane containing the O-point.
+    Excludes grid regions based on a line perpendicular to the segment from
+    the O-point to the primary X-point. Points on the O-point's side of that
+    line are considered part of the plasma core.
 
     Parameters
     ----------
-    R : np.array
-        Radial positions at which flux measured.
-    Z : np.array
-        Vertical positions at which flux measured.
-    opoint : list
-        The list of O-point tuples (R,Z,psi).
-    xpoint : list
-        The list of X-point tuples (R,Z,psi).
+    R, Z : ndarray
+        Grid coordinates.
+    opoint : ndarray, shape (1, 2)
+        (R, Z) coordinates of the O-point.
+    xpoint : ndarray, shape (1, 2)
+        (R, Z) coordinates of the primary X-point.
 
     Returns
     -------
-    np.array
-        Returns a 2D Boolean array (at (R,Z) locations) where 1 denotes a point inside
-        the core and 0 denostes a point outside.
+    geom_mask : ndarray of bool
+        True where the grid point lies in the core (O-point) half-plane,
+        False otherwise.
     """
 
     delta_R = opoint[0, 0] - xpoint[0, 0]
