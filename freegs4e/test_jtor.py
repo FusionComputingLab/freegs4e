@@ -51,7 +51,8 @@ def test_profile_jtor_stores_plotting_metadata():
     assert hasattr(profiles, "psi_bndry")
     assert hasattr(profiles, "diverted_core_mask")
     assert hasattr(profiles, "limiter_core_mask")
-    
+
+
 def _continuity_test_profile(shape):
     profiles = jtor.ConstrainPaxisIp(1e3, 2e5, 2.0)
     profiles.mask_inside_limiter = np.ones(shape, dtype=bool)
