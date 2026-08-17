@@ -355,17 +355,10 @@ def scan_for_crit(R, Z, psi):
 
     dR = R[1, 0] - R[0, 0]
     dZ = Z[0, 1] - Z[0, 0]
-    psiR = np.zeros_like(psi)
-    psiZ = np.zeros_like(psi)
-    psiR[1:-1, 1:-1] = 0.5 * (psi[2:, 1:-1] - psi[:-2, 1:-1]) / dR
-    psiZ[1:-1, 1:-1] = 0.5 * (psi[1:-1, 2:] - psi[1:-1, :-2]) / dZ
-    #
-    #    psiR[0,:]=(psi[1,:]-psi[0,:])/dR
-    #     psiR[-1,:]=(psi[-1,:]-psi[-2,:])/dR
-    #     psiR[1:-1,0]=(psi[1:,0]-psi[:-1,0])/dR
-    #     psiR[1:-1,-1]=(psi[1:,-1]-psi[:-1,-0])/dR
-    #
-    Bp2 = psiR**2 + psiZ**2  # /R[:,:]**2
+    Bp2 = np.zeros_like(psi)
+    Bp2[1:-1, 1:-1] = (0.5 * (psi[2:, 1:-1] - psi[:-2, 1:-1]) / dR) ** 2 + (
+        0.5 * (psi[1:-1, 2:] - psi[1:-1, :-2]) / dZ
+    ) ** 2
     #
     xpoint = [(-999.0, -999.0, -999.0)]
     opoint = [(-999.0, -999.0, -999.0)]
@@ -385,7 +378,8 @@ def scan_for_crit(R, Z, psi):
                 # Found local minimum
                 R0 = R[i, j]
                 Z0 = Z[i, j]
-                fR, fZ = psiR[i, j], psiZ[i, j]
+                fR = 0.5 * (psi[i + 1, j] - psi[i - 1, j]) / dR
+                fZ = 0.5 * (psi[i, j + 1] - psi[i, j - 1]) / dZ
                 fRR = (psi[i + 1, j] - 2 * psi[i, j] + psi[i - 1, j]) / dR**2
                 fZZ = (psi[i, j + 1] - 2 * psi[i, j] + psi[i, j - 1]) / dZ**2
                 fRZ = (
@@ -845,7 +839,7 @@ def inside_mask(
         Total poloidal flux on the plasma boundary [Webers/2pi].
     use_geom : bool
         Use (refined) geom_inside_mask function in conjuction with inside_mask_
-        to find the mask (if set to True).
+        to find the mask when at least one X-point is available (if set to True).
 
     Returns
     -------
@@ -857,11 +851,11 @@ def inside_mask(
     mask = inside_mask_(
         R, Z, psi, opoint, xpoint, mask_outside_limiter, psi_bndry
     )
-    if use_geom:
+    if use_geom and len(xpoint) > 0:
         # cure flooding
         mask = mask * geom_inside_mask(R, Z, opoint, xpoint)
         # apply geometric masking criterion to second Xpoint if close to double null
-        if len(xpoint > 1):
+        if len(xpoint) > 1:
             if (
                 np.abs(
                     (xpoint[0, 2] - xpoint[1, 2])
@@ -876,33 +870,30 @@ def inside_mask(
 def geom_inside_mask(R, Z, opoint, xpoint):
     """
 
-    This function excludes grid regions based on a line perpendicular
-    to the segment from the O-point to the primary X-point in the plasma core.
+    Excludes grid regions based on a line perpendicular to the segment from
+    the O-point to the primary X-point. Points on the O-point's side of that
+    line are considered part of the plasma core.
 
     Parameters
     ----------
-    R : np.array
-        Radial positions at which flux measured.
-    Z : np.array
-        Vertical positions at which flux measured.
-    opoint : list
-        The list of O-point tuples (R,Z,psi).
-    xpoint : list
-        The list of X-point tuples (R,Z,psi).
+    R, Z : ndarray
+        Grid coordinates.
+    opoint : ndarray, shape (1, 2)
+        (R, Z) coordinates of the O-point.
+    xpoint : ndarray, shape (1, 2)
+        (R, Z) coordinates of the primary X-point.
 
     Returns
     -------
-    np.array
-        Returns a 2D Boolean array (at (R,Z) locations) where 1 denotes a point inside
-        the core and 0 denostes a point outside.
+    geom_mask : ndarray of bool
+        True where the grid point lies in the core (O-point) half-plane,
+        False otherwise.
     """
 
-    slope = -(opoint[0, 0] - xpoint[0, 0]) / (opoint[0, 1] - xpoint[0, 1])
-    interc = xpoint[0, 1] - slope * xpoint[0, 0]
-
+    delta_R = opoint[0, 0] - xpoint[0, 0]
+    delta_Z = opoint[0, 1] - xpoint[0, 1]
     geom_mask = (
-        (opoint[0, 1] - (slope * opoint[0, 0] + interc))
-        * (Z - (slope * R + interc))
+        delta_R * (R - xpoint[0, 0]) + delta_Z * (Z - xpoint[0, 1])
     ) > 0
 
     return geom_mask

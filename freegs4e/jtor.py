@@ -36,6 +36,58 @@ class Profile(object):
     Base class from which profiles classes can inherit.
     """
 
+    def Jtor(self, R, Z, psi, psi_bndry=None):
+        """
+        Calculate the toroidal current density on the computational grid.
+
+        This convenience wrapper combines the generic critical-point and
+        core-mask identification in :meth:`Jtor_part1` with the profile-specific
+        current-density calculation implemented by each subclass in
+        :meth:`Jtor_part2`.
+
+        Parameters
+        ----------
+        R : np.ndarray
+            Radial coordinates of the grid points.
+        Z : np.ndarray
+            Vertical coordinates of the grid points.
+        psi : np.ndarray
+            Total poloidal field flux at each grid point [Webers/2pi].
+        psi_bndry : float, optional
+            Value of the poloidal field flux at the plasma boundary.
+
+        Returns
+        -------
+        np.array
+            Toroidal current density on the computational grid [A/m^2].
+        """
+
+        if not hasattr(self, "mask_inside_limiter"):
+            self.mask_inside_limiter = np.ones_like(psi, dtype=bool)
+        if not hasattr(self, "mask_outside_limiter"):
+            self.mask_outside_limiter = np.zeros_like(psi, dtype=float)
+
+        opt, xpt, core_mask, psi_bndry = self.Jtor_part1(
+            R,
+            Z,
+            psi,
+            psi_bndry=psi_bndry,
+            mask_outside_limiter=self.mask_outside_limiter,
+        )
+        if core_mask is None:
+            core_mask = np.ones_like(psi, dtype=bool)
+        uses_xpoint_boundary = len(xpt) > 0 and np.isclose(
+            psi_bndry, xpt[0][2]
+        )
+        self.opt = opt
+        self.xpt = xpt
+        self.psi_axis = opt[0][2]
+        self.psi_bndry = psi_bndry
+        self.diverted_core_mask = core_mask
+        self.limiter_core_mask = core_mask
+        self.flag_limiter = not uses_xpoint_boundary
+        return self.Jtor_part2(R, Z, psi, opt[0][2], psi_bndry, core_mask)
+
     def pressure(self, psinorm):
         """
         Calculate the 1D pressure profile in the plasma (vs. the normalised
@@ -178,23 +230,22 @@ class Profile(object):
             if hasattr(self, "diverted_core_mask"):
                 if self.diverted_core_mask is not None:
                     previous_core_size = np.sum(self.diverted_core_mask)
-                    skipped_xpts = 0
                     # check size change
                     check = (
                         np.sum(diverted_core_mask) / previous_core_size < 0.5
                     )
-                    # check there's more candidates
-                    check *= len(xpt) > 1
-                    while check:
-                        # try using second xpt as primary xpt
+                    candidate_index = 1
+                    while check and candidate_index < len(xpt):
+                        # try using the next xpt as primary xpt
+                        candidate_xpt = xpt[candidate_index:]
                         alt_diverted_core_mask = critical.inside_mask(
                             R,
                             Z,
                             psi,
                             opt,
-                            xpt[1:],
+                            candidate_xpt,
                             mask_outside_limiter,
-                            xpt[1, 2],
+                            candidate_xpt[0, 2],
                         )
                         # check the alternative Xpoint gives rise to a valid core
                         edge_pixels = np.sum(
@@ -202,8 +253,8 @@ class Profile(object):
                         )
                         if edge_pixels == 0:
                             # the candidate is valid
-                            xpt = xpt[1:]
-                            psi_bndry = xpt[1, 2]
+                            xpt = candidate_xpt
+                            psi_bndry = xpt[0, 2]
                             diverted_core_mask = alt_diverted_core_mask.copy()
 
                             # check if there could be better candidates
@@ -211,8 +262,9 @@ class Profile(object):
                                 np.sum(diverted_core_mask) / previous_core_size
                                 < 0.5
                             )
-                            # check there's more candidates
-                            check *= len(xpt) > 1
+                            candidate_index = 1
+                        else:
+                            candidate_index += 1
         else:
             # No X-points
             psi_bndry = psi[0, 0]
