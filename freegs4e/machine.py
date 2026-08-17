@@ -1554,7 +1554,7 @@ class Machine:
         Parameters
         ----------
         pgreen : dict
-            Dictionary of Greens functions for the solenoid.
+            Dictionary of Greens functions for the active and passive coils.
 
         Returns
         -------
@@ -1568,11 +1568,25 @@ class Machine:
         return psi_coils
 
     def getPsitokamak(self, vgreen):
-        """Calculate plasma flux from all active and passive coil currents.
+        """
+        Calculate flux from all active and passive coil currents.
 
         The leading axis of ``vgreen`` indexes coils. Flattening the spatial
         axes expresses the weighted sum as one matrix multiplication, avoiding
         the full-sized temporary array created by broadcast multiplication.
+
+        Parameters
+        ----------
+        vgreen : np.array
+            Array of Greens functions for the active and passive coils.
+
+        Returns
+        -------
+        np.array
+            Poloidal flux from Greens functions [Webers/2pi].
+        """
+
+        """
         """
         spatial_shape = vgreen.shape[1:]
         return (
