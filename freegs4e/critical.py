@@ -50,6 +50,7 @@ except ImportError:
     def njit(*args, **kwargs):
         return lambda f: f
 
+
 from . import bilinear_interpolation
 
 # from unittest import makeSuite
