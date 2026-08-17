@@ -16,6 +16,13 @@ Given FreeGS4E is not a standalone equilibrium solver, we recommend following th
 
 If you would, however, like to contribute to FreeGS4E directly, please see the installation instructions in the section on contributing below.
 
+### Supported Python and dependencies
+
+FreeGS4E supports Python 3.10 through 3.14. Its runtime dependency bounds are
+kept compatible with FreeGSNKE, which uses a subset of the same scientific
+Python envelope. Changes to shared lower or upper bounds should therefore be
+tested in both repositories before release.
+
 ## Getting started
 
 All of the examples for getting started can be found within the `freegsnke/examples` directory.

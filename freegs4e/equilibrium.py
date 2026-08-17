@@ -27,7 +27,7 @@ import numpy as np
 import shapely as sh
 from numpy import exp, linspace, meshgrid, pi
 from scipy import interpolate
-from scipy.integrate import cumulative_trapezoid
+from scipy.integrate import cumulative_trapezoid, trapezoid
 from scipy.optimize import least_squares
 from scipy.spatial.distance import pdist, squareform
 
@@ -1691,7 +1691,7 @@ class Equilibrium:
         Bp = self.Bpol(separatrix[:, 0], separatrix[:, 1])
 
         # integrate
-        integral_Bpol_lcfs = np.trapz(Bp, l)
+        integral_Bpol_lcfs = trapezoid(Bp, l)
 
         return integral_Bpol_2 / (
             (integral_Bpol_lcfs / self.separatrix_length()) ** 2
@@ -1985,7 +1985,7 @@ class Equilibrium:
         Bp = self.Bpol(separatrix[:, 0], separatrix[:, 1])
 
         # integrate
-        integral_Bpol_lcfs = np.trapz(Bp, l)
+        integral_Bpol_lcfs = trapezoid(Bp, l)
 
         return (pressure_integral / self.plasmaVolume()) / (
             integral_Bpol_lcfs / self.separatrix_length()
@@ -2596,8 +2596,8 @@ class Equilibrium:
             f_on_flux_surf = f(flux_surface[:, 0], flux_surface[:, 1])
 
             # integrate with trapezoidal rule
-            integral_f_inv_Bpol = np.trapz(f_on_flux_surf * Bp_inv, l)
-            integral_inv_Bpol = np.trapz(Bp_inv, l)
+            integral_f_inv_Bpol = trapezoid(f_on_flux_surf * Bp_inv, l)
+            integral_inv_Bpol = trapezoid(Bp_inv, l)
 
             flux_averaged_quantity[i] = integral_f_inv_Bpol / integral_inv_Bpol
 
