@@ -20,6 +20,8 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
+import warnings
+
 import numpy as np
 from numpy import (
     abs,
@@ -48,8 +50,6 @@ except ImportError:
     def njit(*args, **kwargs):
         return lambda f: f
 
-
-import warnings
 
 from . import bilinear_interpolation
 
