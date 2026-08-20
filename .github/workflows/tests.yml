@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, labeled]
 
 jobs:
   tests:
@@ -23,3 +24,54 @@ jobs:
         run: python -m pip install ".[dev]"
       - name: Run test suite
         run: python -m pytest -v
+
+  downstream-freegsnke:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout candidate FreeGS4E
+        uses: actions/checkout@v4
+        with:
+          path: freegs4e
+      - name: Checkout FreeGSNKE
+        uses: actions/checkout@v4
+        with:
+          repository: FusionComputingLab/freegsnke
+          path: freegsnke
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install candidate backend and FreeGSNKE
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./freegs4e
+          python -m pip install -e "./freegsnke[dev]"
+      - name: Run FreeGSNKE test suite
+        working-directory: freegsnke
+        run: python -m pytest -v
+      - name: Run self-contained FreeGSNKE examples
+        if: contains(github.event.pull_request.labels.*.name, 'ready-for-final-tests')
+        working-directory: freegsnke
+        run: |
+          notebooks=(
+            "examples/example00 - build_tokamak_machine.ipynb"
+            "examples/example01a - static_inverse_solve_MASTU.ipynb"
+            "examples/example01b - advanced_static_inverse_solve.ipynb"
+            "examples/example02 - static_forward_solve_MASTU.ipynb"
+            "examples/example03 - extracting_equilibrium_quantities.ipynb"
+            "examples/example04 - using_magnetic_probes.ipynb"
+            "examples/example05a - nonlinear_and_linear_evolution_with_GS.ipynb"
+            "examples/example05b - linear_evolution_without_GS.ipynb"
+            "examples/example05c - linear_evolution_with_relinearisation.ipynb"
+            "examples/example07a - Anamak.ipynb"
+            "examples/example07b - SPARC.ipynb"
+            "examples/example07c - ITER.ipynb"
+            "examples/example09 - virtual_circuits_MASTU.ipynb"
+            "examples/example10 - growth_rates.ipynb"
+            "examples/example11 - pulse_design_tool.ipynb"
+          )
+          for notebook in "${notebooks[@]}"; do
+            jupyter nbconvert --execute --to notebook --inplace "$notebook"
+          done
