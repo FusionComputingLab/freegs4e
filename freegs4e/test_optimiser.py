@@ -82,6 +82,8 @@ def test_reducing():
 
 
 def test_pick_all():
+    # TODO: this test has a small chance of randomly failing, consider changing
+
     vals = optimiser.pickUnique(10, 10, [])
     # Should be a scrambled list of [0...10]
 

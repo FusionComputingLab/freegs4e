@@ -27,6 +27,13 @@ tested in both repositories before release.
 
 All of the examples for getting started can be found within the `freegsnke/examples` directory.
 
+## Parallel execution
+
+FreeGS4E contains multiple parallelized components for faster execution, through the use of multithreading. 
+
+The number of threads can be controlled through the environment variable `OMP_NUM_THREADS` (recommended). Note that by default the number of threads is limited to 32: for use in HPC systems, it is recommended to set the environment variable `NUMEXPR_MAX_THREADS` to the number of available cores.
+
+More fine grained parallel control can be achieved by using the environment variable `NUMEXPR_NUM_THREADS` or programatically through the use of the function `set_num_threads()` in `freegs4e.parallel_funcs`. These will change the number of threads used by parallel functions in FreeGS4E without affecting the number of threads used by OMP-based libraries (e.g. numpy). 
 
 ## Contributing
 
