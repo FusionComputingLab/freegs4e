@@ -8,7 +8,7 @@ version = "0.14.0"
 authors = [
     {name = "The FreeGS4E and FreeGS developers"}
 ]
-description = "Free boundary tokamak plasma equilibrium Grad-Shafranov solver for time evolution"
+description = "Grad-Shafranov equilibrium backend for FreeGSNKE"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [

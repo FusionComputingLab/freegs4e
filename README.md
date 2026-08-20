@@ -12,8 +12,10 @@ Therefore, FreeGS4E is **not intended to be a drop in replacement solver for Fre
 The presence of an inherited module does not by itself mean that its original
 FreeGS workflow is supported. In particular, the standalone Picard inverse
 solver and its original control-constraint interface are not supported entry
-points for FreeGSNKE. See [Support scope](SUPPORT.md) for the backend API used by
-FreeGSNKE, known unsupported behaviour, and the status of retained legacy code.
+points for FreeGSNKE. See the
+[support scope](https://github.com/FusionComputingLab/freegs4e/blob/main/SUPPORT.md)
+for the backend API used by FreeGSNKE, known unsupported behaviour, and the
+status of retained legacy code.
 
 
 ## Installation
