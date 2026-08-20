@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from . import critical
 
@@ -41,12 +42,17 @@ def test_one_xpoint():
     def psi_func(R, Z):
         return (R - r0) ** 2 - (Z - z0) ** 2
 
-    opoints, xpoints = critical.find_critical(r2d, z2d, psi_func(r2d, z2d))
-
-    assert len(xpoints) == 1
+    # Low-level scanning remains meaningful for vacuum fields without an axis.
+    opoints, xpoints = critical.scan_for_crit(r2d, z2d, psi_func(r2d, z2d))
     assert len(opoints) == 0
+    assert len(xpoints) == 1
     assert np.isclose(xpoints[0][0], r0, atol=1.0 / nx)
     assert np.isclose(xpoints[0][1], z0, atol=1.0 / ny)
+
+    # The equilibrium-oriented wrapper requires an O-point to order and filter
+    # candidate X-points relative to the magnetic axis.
+    with pytest.raises(ValueError, match="No opoints found"):
+        critical.find_critical(r2d, z2d, psi_func(r2d, z2d))
 
 
 def test_doublet():

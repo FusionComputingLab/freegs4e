@@ -21,10 +21,5 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install package and test dependencies
         run: python -m pip install ".[dev]"
-      - name: Run compatibility suite
-        # These two tests also fail on main and are tracked separately from this
-        # dependency-compatibility change. Keep the remainder enforced here.
-        run: >-
-          python -m pytest -v
-          --deselect=freegs4e/test_critical.py::test_one_xpoint
-          --deselect=freegs4e/test_readwrite.py::test_readwrite
+      - name: Run test suite
+        run: python -m pytest -v
