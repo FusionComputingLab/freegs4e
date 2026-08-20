@@ -461,5 +461,6 @@ class SingleThreadedRegion(ThreadManagedRegion):
     EXPERIMENTAL. Defines a context manager that enforces single threaded execution in a region
     of code.
     """
+
     def __init__(self):
         super().__init__(1)
