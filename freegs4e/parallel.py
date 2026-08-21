@@ -26,12 +26,13 @@ import concurrent.futures
 import os
 import warnings
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import PackageNotFoundError, version
 
 import numexpr as ne
 import numpy as np
 from numpy import clip, take
 from scipy.special import ellipe, ellipk
-from threadpoolctl import ThreadpoolController
+from threadpoolctl import LibController, ThreadpoolController, register
 
 try:
     # preferred path, preserves future numpy compatibility
@@ -39,6 +40,9 @@ try:
 except ImportError:
     # kept for numpy 1.26 support
     from numpy.core.multiarray import normalize_axis_index
+
+
+USER_API_ID = "fg_threads"
 
 thread_controller = ThreadpoolController()
 
@@ -473,3 +477,46 @@ class SingleThreadedRegion(ThreadManagedRegion):
 
     def __init__(self):
         super().__init__(1)
+
+
+class CustomThreadController(LibController):
+    """
+    A custom thread controller for this library to allow control with `threadpoolctl`
+    """
+
+    user_api = USER_API_ID
+    internal_api = "freegs4e.parallel"
+
+    # threadpoolctl limiters only work if it finds a shared library with the given prefix
+    # we pass "interpreter", the name of a libary packaged numexpr
+
+    # NOTE: this is a very hacky workaround that relies on the already existing dependence
+    # of this package on numexpr, and may need to be changed in the future
+    filename_prefixes = ("interpreter",)
+
+    def get_num_threads(self):
+        return get_num_threads()
+
+    def set_num_threads(self, num_threads):
+        set_num_threads(num_threads)
+
+    def get_version(self):
+        try:
+            _version = version("freegs4e")
+        except PackageNotFoundError:
+            _version = "0+unknown"
+        return _version
+
+
+# Register the thread controller for this library with threadpoolctl
+
+register(CustomThreadController)
+
+controller_info = ThreadpoolController().info()
+threadlibs = [lib_info["user_api"] for lib_info in controller_info]
+
+if USER_API_ID not in threadlibs:
+    warnings.warn(
+        "freegs4e.parallel not successfully registered with threadpoolctl,"
+        "this may cause performance issues under specific circumstances"
+    )
