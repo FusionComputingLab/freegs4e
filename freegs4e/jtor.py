@@ -1625,7 +1625,9 @@ class GeneralPprimeFFprime(Profile):
         self.p_func = None
 
         if self.pprime_data is not None:
-            self.pprime_func = InterpolatedUnivariateSpline(self.psi_n, self.pprime_data)
+            self.pprime_func = InterpolatedUnivariateSpline(
+                self.psi_n, self.pprime_data
+            )
 
         if self.p_data is not None:
             self.p_func = InterpolatedUnivariateSpline(self.psi_n, self.p_data)
@@ -1643,7 +1645,9 @@ class GeneralPprimeFFprime(Profile):
         self.f_func = None
 
         if self.ffprime_data is not None:
-            self.ffprime_func = InterpolatedUnivariateSpline(self.psi_n, self.ffprime_data)
+            self.ffprime_func = InterpolatedUnivariateSpline(
+                self.psi_n, self.ffprime_data
+            )
 
         if self.f_data is not None:
             self.f_func = InterpolatedUnivariateSpline(self.psi_n, self.f_data)
