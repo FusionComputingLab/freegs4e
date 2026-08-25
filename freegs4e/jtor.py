@@ -1625,10 +1625,10 @@ class GeneralPprimeFFprime(Profile):
         self.p_func = None
 
         if self.pprime_data is not None:
-            self.pprime_func = UnivariateSpline(self.psi_n, self.pprime_data)
+            self.pprime_func = InterpolatedUnivariateSpline(self.psi_n, self.pprime_data)
 
         if self.p_data is not None:
-            self.p_func = UnivariateSpline(self.psi_n, self.p_data)
+            self.p_func = InterpolatedUnivariateSpline(self.psi_n, self.p_data)
 
         # if pprime_func still not provided, use p_func derivative, else throw error
         if self.pprime_func is None and self.p_func is not None:
