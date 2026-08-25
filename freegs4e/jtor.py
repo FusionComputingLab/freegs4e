@@ -23,7 +23,7 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from numpy import clip, pi, reshape, sqrt, zeros
 from scipy.integrate import quad, romb
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.special import beta as spbeta
 from scipy.special import betainc as spbinc
 
@@ -1643,10 +1643,10 @@ class GeneralPprimeFFprime(Profile):
         self.f_func = None
 
         if self.ffprime_data is not None:
-            self.ffprime_func = UnivariateSpline(self.psi_n, self.ffprime_data)
+            self.ffprime_func = InterpolatedUnivariateSpline(self.psi_n, self.ffprime_data)
 
         if self.f_data is not None:
-            self.f_func = UnivariateSpline(self.psi_n, self.f_data)
+            self.f_func = InterpolatedUnivariateSpline(self.psi_n, self.f_data)
 
         # if ffprime_func still not provided, use f_func derivative, else throw error
         if self.ffprime_func is None and self.f_func is not None:
