@@ -1589,7 +1589,7 @@ class GeneralPprimeFFprime(Profile):
         Ip_logic : bool
             If True, entire profile is re-normalised to satisfy Ip identically.
         interpolator : str
-            Defaults to using a "univariate_spline" or optionally a "cubic_spline".
+            Defaults to using a "univariate_spline" or optionally a "cubic_spline", data points in both are interpolated exactly.
         """
 
         # set parameters for later use
