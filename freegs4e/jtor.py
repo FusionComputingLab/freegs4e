@@ -23,7 +23,7 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from numpy import clip, pi, reshape, sqrt, zeros
 from scipy.integrate import quad, romb
-from scipy.interpolate import UnivariateSpline, CubicSpline
+from scipy.interpolate import CubicSpline, UnivariateSpline
 from scipy.special import beta as spbeta
 from scipy.special import betainc as spbinc
 
