@@ -52,7 +52,12 @@ jobs:
         working-directory: freegsnke
         run: python -m pytest -v
       - name: Run self-contained FreeGSNKE examples
-        if: contains(github.event.pull_request.labels.*.name, 'ready-for-final-tests')
+        # Ignore unrelated label additions, but rerun after later commits or reopen events.
+        if: >-
+          (github.event.action == 'labeled' &&
+           github.event.label.name == 'ready-for-final-tests') ||
+          (github.event.action != 'labeled' &&
+           contains(github.event.pull_request.labels.*.name, 'ready-for-final-tests'))
         working-directory: freegsnke
         run: |
           notebooks=(
