@@ -1630,16 +1630,22 @@ class GeneralPprimeFFprime(Profile):
 
         if self.pprime_data is not None:
             if self.interpolator == "cubic_spline":
-                self.pprime_func = CubicSpline(self.psi_n, self.pprime_data, bc_type="natural")
+                self.pprime_func = CubicSpline(
+                    self.psi_n, self.pprime_data, bc_type="natural"
+                )
             else:
-                self.pprime_func = UnivariateSpline(self.psi_n, self.pprime_data, s=0)
+                self.pprime_func = UnivariateSpline(
+                    self.psi_n, self.pprime_data, s=0
+                )
 
         if self.p_data is not None:
             if self.interpolator == "cubic_spline":
-                self.p_func = CubicSpline(self.psi_n, self.p_data, bc_type="natural")
+                self.p_func = CubicSpline(
+                    self.psi_n, self.p_data, bc_type="natural"
+                )
             else:
                 self.p_func = UnivariateSpline(self.psi_n, self.p_data, s=0)
-            
+
         # if pprime_func still not provided, use p_func derivative, else throw error
         if self.pprime_func is None and self.p_func is not None:
             self.pprime_func = self.p_func.derivative(n=1)
@@ -1654,16 +1660,22 @@ class GeneralPprimeFFprime(Profile):
 
         if self.ffprime_data is not None:
             if self.interpolator == "cubic_spline":
-                self.ffprime_func = CubicSpline(self.psi_n, self.ffprime_data, bc_type="natural")
+                self.ffprime_func = CubicSpline(
+                    self.psi_n, self.ffprime_data, bc_type="natural"
+                )
             else:
-                self.ffprime_func = UnivariateSpline(self.psi_n, self.ffprime_data, s=0)
+                self.ffprime_func = UnivariateSpline(
+                    self.psi_n, self.ffprime_data, s=0
+                )
 
         if self.f_data is not None:
             if self.interpolator == "cubic_spline":
-                self.f_func = CubicSpline(self.psi_n, self.f_data, bc_type="natural")
+                self.f_func = CubicSpline(
+                    self.psi_n, self.f_data, bc_type="natural"
+                )
             else:
                 self.f_func = UnivariateSpline(self.psi_n, self.f_data, s=0)
-            
+
         # if ffprime_func still not provided, use f_func derivative, else throw error
         if self.ffprime_func is None and self.f_func is not None:
             fprime_func = self.f_func.derivative(n=1)
