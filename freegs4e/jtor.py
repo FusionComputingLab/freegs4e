@@ -23,7 +23,7 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from numpy import clip, pi, reshape, sqrt, zeros
 from scipy.integrate import quad, romb
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, CubicSpline
 from scipy.special import beta as spbeta
 from scipy.special import betainc as spbinc
 
@@ -1562,6 +1562,7 @@ class GeneralPprimeFFprime(Profile):
         f_data=None,
         Raxis=1,
         Ip_logic=True,
+        interpolator="univariate_spline",
     ):
         """
         Initialise the class.
@@ -1587,6 +1588,8 @@ class GeneralPprimeFFprime(Profile):
             Radial scaling parameter (non-negative).
         Ip_logic : bool
             If True, entire profile is re-normalised to satisfy Ip identically.
+        interpolator : str
+            Defaults to using a "univariate_spline" or optionally a "cubic_spline".
         """
 
         # set parameters for later use
@@ -1601,6 +1604,7 @@ class GeneralPprimeFFprime(Profile):
         self.Ip_logic = Ip_logic
         if self.Ip_logic is False:
             self.L = 1  # no normalisation in this case
+        self.interpolator = interpolator
 
         # initialise profile ready for calculation
         self.initialize_profile()
@@ -1625,11 +1629,17 @@ class GeneralPprimeFFprime(Profile):
         self.p_func = None
 
         if self.pprime_data is not None:
-            self.pprime_func = UnivariateSpline(self.psi_n, self.pprime_data)
+            if self.interpolator == "cubic_spline":
+                self.pprime_func = CubicSpline(self.psi_n, self.pprime_data, bc_type="natural")
+            else:
+                self.pprime_func = UnivariateSpline(self.psi_n, self.pprime_data, s=0)
 
         if self.p_data is not None:
-            self.p_func = UnivariateSpline(self.psi_n, self.p_data)
-
+            if self.interpolator == "cubic_spline":
+                self.p_func = CubicSpline(self.psi_n, self.p_data, bc_type="natural")
+            else:
+                self.p_func = UnivariateSpline(self.psi_n, self.p_data, s=0)
+            
         # if pprime_func still not provided, use p_func derivative, else throw error
         if self.pprime_func is None and self.p_func is not None:
             self.pprime_func = self.p_func.derivative(n=1)
@@ -1643,11 +1653,17 @@ class GeneralPprimeFFprime(Profile):
         self.f_func = None
 
         if self.ffprime_data is not None:
-            self.ffprime_func = UnivariateSpline(self.psi_n, self.ffprime_data)
+            if self.interpolator == "cubic_spline":
+                self.ffprime_func = CubicSpline(self.psi_n, self.ffprime_data, bc_type="natural")
+            else:
+                self.ffprime_func = UnivariateSpline(self.psi_n, self.ffprime_data, s=0)
 
         if self.f_data is not None:
-            self.f_func = UnivariateSpline(self.psi_n, self.f_data)
-
+            if self.interpolator == "cubic_spline":
+                self.f_func = CubicSpline(self.psi_n, self.f_data, bc_type="natural")
+            else:
+                self.f_func = UnivariateSpline(self.psi_n, self.f_data, s=0)
+            
         # if ffprime_func still not provided, use f_func derivative, else throw error
         if self.ffprime_func is None and self.f_func is not None:
             fprime_func = self.f_func.derivative(n=1)
@@ -1808,7 +1824,7 @@ class GeneralPprimeFFprime(Profile):
                     "The ffprime profile cannot be normalised. "
                     "Please first calculate Jtor for this profile. "
                 )
-        return self.L * self.ffprime_func(pn_) / self.Raxis
+        return self.L * self.ffprime_func(pn_) * self.Raxis
 
     def pressure(self, pn):
         """
@@ -1831,7 +1847,7 @@ class GeneralPprimeFFprime(Profile):
         if self.p_func is not None:
             return self.p_func(pn_)
         else:
-            return super(GeneralPprimeFfprime, self).pressure(pn_)
+            return super(GeneralPprimeFFprime, self).pressure(pn_)
 
     def fpol(self, pn):
         """
@@ -1854,7 +1870,7 @@ class GeneralPprimeFFprime(Profile):
         if self.f_func is not None:
             return self.f_func(pn_)
         else:
-            return super(GeneralPprimeFfprime, self).fpol(pn_)
+            return super(GeneralPprimeFFprime, self).fpol(pn_)
 
     def fvac(self):
         """
