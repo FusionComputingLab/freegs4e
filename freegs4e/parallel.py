@@ -30,9 +30,15 @@ from concurrent.futures import ThreadPoolExecutor
 import numexpr as ne
 import numpy as np
 from numpy import clip, take
-from numpy.lib.array_utils import normalize_axis_index
 from scipy.special import ellipe, ellipk
 from threadpoolctl import ThreadpoolController
+
+try:
+    # preferred path, preserves future numpy compatibility
+    from numpy.lib.array_utils import normalize_axis_index
+except ImportError:
+    # kept for numpy 1.26 support
+    from numpy.core.multiarray import normalize_axis_index
 
 thread_controller = ThreadpoolController()
 
@@ -174,7 +180,7 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
             )
 
         # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
-        (
+        tuple(
             f.result()
             for f in concurrent.futures.wait(
                 futures, return_when=concurrent.futures.FIRST_EXCEPTION
@@ -218,6 +224,9 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
 
     # The wrapper enssures that BLAS/OpenMP threads will not be spawned by scipy as this
     # could cause oversubscription issues.
+
+    if out:
+        warnings.warn("out argument in threaded_elliptics_ek is ignored")
 
     num_threads_total = get_num_threads()
 
@@ -275,7 +284,7 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
             )
 
         # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
-        (
+        tuple(
             f.result()
             for f in concurrent.futures.wait(
                 futures, return_when=concurrent.futures.FIRST_EXCEPTION
@@ -405,7 +414,7 @@ def threaded_clip(
             )
 
         # Threads don't raise exceptions unless joined explicitly. This is a low-overhead way of doing that
-        (
+        tuple(
             f.result()
             for f in concurrent.futures.wait(
                 futures, return_when=concurrent.futures.FIRST_EXCEPTION

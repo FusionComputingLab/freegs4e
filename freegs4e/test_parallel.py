@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from numpy.exceptions import AxisError
 from scipy.special import ellipe, ellipk
 
 from . import parallel
@@ -44,6 +45,12 @@ def test_take(make_test_array):
         reference == parallel.threaded_take(make_test_array, idcs)
     ), "Failed n_threads>idcs.shape[0]"
 
+    with pytest.raises(TypeError, match="Only numpy ndarray"):
+        parallel.threaded_take(make_test_array, None)
+
+    with pytest.raises(IndexError, match="out of bounds"):
+        parallel.threaded_take(make_test_array, np.array(1e9, dtype=int))
+
     parallel.set_num_threads(orig_num_threads)
 
 
@@ -68,6 +75,9 @@ def test_take_axis(make_test_array):
         reference == parallel.threaded_take(make_test_array, idcs, axis=1)
     ), "Failed n_threads>idcs.shape[0]"
 
+    with pytest.raises(AxisError, match="out of bounds"):
+        parallel.threaded_take(make_test_array, idcs, axis=2000)
+
     parallel.set_num_threads(orig_num_threads)
 
 
@@ -91,6 +101,14 @@ def test_clip(make_test_array):
     assert np.all(
         reference == parallel.threaded_clip(make_test_array, amin, amax)
     ), "Failed n_threads>idcs.shape[0]"
+
+    with pytest.raises(ValueError, match="shape mismatch"):
+        bad_out = np.empty((2, 2))
+        parallel.threaded_clip(make_test_array, amin, amax, out=bad_out)
+
+    with pytest.raises(Exception, match="Cannot cast"):
+        bad_out = np.empty_like(make_test_array, dtype=np.int32)
+        parallel.threaded_clip(make_test_array, amin, amax, out=bad_out)
 
     parallel.set_num_threads(orig_num_threads)
 
@@ -117,5 +135,8 @@ def test_elliptics(make_test_array):
     assert np.all(
         (refe == rese) & (refk == resk)
     ), "Failed n_threads>idcs.shape[0]"
+
+    with pytest.raises(TypeError, match="Only numpy ndarray"):
+        parallel.threaded_elliptics_ek(None)
 
     parallel.set_num_threads(orig_num_threads)
