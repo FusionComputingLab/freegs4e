@@ -24,6 +24,7 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 
 import concurrent.futures
 import os
+import sys
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import PackageNotFoundError, version
@@ -43,6 +44,12 @@ except ImportError:
 
 
 USER_API_ID = "fg_threads"
+
+MAX_THREADS_FLAG = "NUMEXPR_MAX_THREADS"
+OMP_SET_FLAG = "OMP_NUM_THREADS"
+NUMEXPR_SET_FLAG = "NUMEXPR_NUM_THREADS"
+
+DEFAULT_THREADCOUNT = 1  # is changed at the end of the script
 
 thread_controller = ThreadpoolController()
 
@@ -76,6 +83,19 @@ def set_num_threads(num_threads):
 
     # for consistency in performance, always match the no. of threads used by numexpr
     ne.set_num_threads(num_threads)
+
+
+def get_max_threads():
+    """
+    Utility function to inquire the maximum size allowed for a threadpool.
+
+    Returns
+    -------
+    int
+        Number of threads
+    """
+
+    return ne.MAX_THREADS
 
 
 @thread_controller.wrap(limits={"blas": 1, "openmp": 1})
@@ -508,7 +528,81 @@ class CustomThreadController(LibController):
         return _version
 
 
+# -----------------------------------------------------------------------------
+# Configure the default maximum number of threads
+# -----------------------------------------------------------------------------
+
+# If the following conditions are met:
+#
+# 1. The threadcount wasn't configured in the environment
+# 2. Either openmp or blas was identified by threadpoolctl
+# 3. The default threadcounts for those satisfy the numexpr maximum
+#
+# Then we use their default threadcount instead of numexpr's, because they are
+# more likely to be scheduler-aware
+
+
+# Check if the threadcount was configured through environment variables
+
+omp_set_config = os.environ.get(OMP_SET_FLAG)
+numexpr_set_config = os.environ.get(NUMEXPR_SET_FLAG)
+
+num_threads_set = False
+threadcount = 0
+
+for config in (numexpr_set_config, omp_set_config):
+    try:
+        threadcount = int(config)
+        num_threads_set = threadcount > 0
+    except:
+        pass
+    if num_threads_set:
+        break
+
+# If this issue occurs, give a better info message than numexpr does
+if threadcount > get_max_threads():
+    # numexpr is silly and may print an error with no newline at the end
+    #    print('\n',file=sys.stderr)
+    warnings.warn(
+        f"\nRequested threadcount {threadcount} is greater than numexpr "
+        f"maximum. Consider setting environment variable {MAX_THREADS_FLAG} to"
+        f" {threadcount} or higher"
+    )
+
+
+# Check if there are other multithreading libraries
+
+other_libs_info = thread_controller.info()
+other_threadcounts = {
+    lib_info["user_api"]: lib_info["num_threads"]
+    for lib_info in other_libs_info
+}
+
+lib_threadcount = None
+if not num_threads_set and other_libs_info:
+    for library in ("openmp", "blas"):
+        if library in other_threadcounts:
+            lib_threadcount = other_threadcounts[library]
+            break
+
+
+# If all conditions are met, set new default
+
+if lib_threadcount and not num_threads_set:
+    if lib_threadcount <= get_max_threads():
+        set_num_threads(lib_threadcount)
+    else:
+        warnings.warn(
+            f"Estimated ideal maximum threadcount {lib_threadcount} is greater"
+            f" than numexpr maximum. Consider setting environment variable "
+            f"{MAX_THREADS_FLAG} to {lib_threadcount}"
+        )
+
+DEFAULT_THREADCOUNT = get_num_threads()
+
+# -----------------------------------------------------------------------------
 # Register the thread controller for this library with threadpoolctl
+# -----------------------------------------------------------------------------
 
 register(CustomThreadController)
 

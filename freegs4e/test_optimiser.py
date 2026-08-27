@@ -33,6 +33,8 @@ def calculate_score(coefs):
 
 
 def test_quadratic():
+    # TODO: can randomly fail
+
     # Check that a quadratic can be solved
     # Note that the optimiser uses random numbers so
     # there is a small chance of this test failing even if correct
@@ -52,6 +54,7 @@ def test_quadratic():
 
 
 def test_reducing():
+    # TODO: fails ocassionally?
     # Test that the best score never goes up
     start_values = [0.1, 0.1]  # Starting guess
 
