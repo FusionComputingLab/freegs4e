@@ -34,6 +34,7 @@ from scipy.spatial.distance import pdist, squareform
 from . import critical, machine, polygons
 from .boundary import fixedBoundary, freeBoundary  # finds free-boundary
 from .gradshafranov import mu0
+from .gs_solver import GSLUSolver
 from .plotting import plotEquilibrium
 
 
@@ -184,7 +185,7 @@ class Equilibrium:
         )
         return self.__solver
 
-    @order.setter
+    @_solver.setter
     def _solver(self, value):
         warnings.warn(
             "Solver attribute of Equilibrium objects is deprecated. Equilibrium contains no linear solver.",
@@ -227,7 +228,10 @@ class Equilibrium:
             Returns modified `self._solver` object.
         """
 
-        return self._solver(psi, rhs)
+        if self.__solver is None:
+            self.__solver = GSLUSolver(self.R, self.Z, order=self._order)
+
+        return self.__solver(psi, rhs)
 
     def getMachine(self):
         """
@@ -2627,7 +2631,7 @@ class Equilibrium:
         rhs[:, -1] = self.plasma_psi[:, -1]
 
         # call elliptic solver
-        plasma_psi = self._solver(self.plasma_psi, rhs)
+        plasma_psi = self.callSolver(self.plasma_psi, rhs)
 
         self._updatePlasmaPsi(plasma_psi)
 
