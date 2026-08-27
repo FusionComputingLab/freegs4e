@@ -165,9 +165,6 @@ def test_cocos_flux_derivative_scaling():
     )
 
 
-@pytest.mark.xfail(
-    reason="geqdsk.read() calls the ._solve method in freegs4e Equilibrium, which is no longer supported"
-)
 def test_equilibrium_geqdsk_write_read():
     """Test that a seeded diverted equilibrium can be saved and loaded."""
 

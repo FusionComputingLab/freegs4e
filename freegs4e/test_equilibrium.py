@@ -25,7 +25,6 @@ def test_inoutseparatrix():
     assert Rin <= eq.Rmax and Rout <= eq.Rmax
 
 
-@pytest.mark.xfail(reason="Has been failing at least since v.0.12.0, 09/01/26")
 def test_fixed_boundary_psi():
     # This is adapted from example 5
 
