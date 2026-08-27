@@ -1635,7 +1635,10 @@ class GeneralPprimeFFprime(Profile):
                 )
             else:
                 self.pprime_func = UnivariateSpline(
-                    self.psi_n, self.pprime_data, s=0
+                    self.psi_n,
+                    self.pprime_data,
+                    s=0,
+                    k=1,
                 )
 
         if self.p_data is not None:
@@ -1644,7 +1647,9 @@ class GeneralPprimeFFprime(Profile):
                     self.psi_n, self.p_data, bc_type="natural"
                 )
             else:
-                self.p_func = UnivariateSpline(self.psi_n, self.p_data, s=0)
+                self.p_func = UnivariateSpline(
+                    self.psi_n, self.p_data, s=0, k=1
+                )
 
         # if pprime_func still not provided, use p_func derivative, else throw error
         if self.pprime_func is None and self.p_func is not None:
@@ -1665,7 +1670,7 @@ class GeneralPprimeFFprime(Profile):
                 )
             else:
                 self.ffprime_func = UnivariateSpline(
-                    self.psi_n, self.ffprime_data, s=0
+                    self.psi_n, self.ffprime_data, s=0, k=1
                 )
 
         if self.f_data is not None:
@@ -1674,7 +1679,9 @@ class GeneralPprimeFFprime(Profile):
                     self.psi_n, self.f_data, bc_type="natural"
                 )
             else:
-                self.f_func = UnivariateSpline(self.psi_n, self.f_data, s=0)
+                self.f_func = UnivariateSpline(
+                    self.psi_n, self.f_data, s=0, k=1
+                )
 
         # if ffprime_func still not provided, use f_func derivative, else throw error
         if self.ffprime_func is None and self.f_func is not None:
