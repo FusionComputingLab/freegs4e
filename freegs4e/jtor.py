@@ -386,7 +386,7 @@ class ConstrainBetapIp(Profile):
                 - spbinc(
                     1.0 / self.alpha_m,
                     1.0 + self.alpha_n,
-                    np.clip(psi_norm, 0.0001, 0.9999) ** (1 / self.alpha_m),
+                    np.clip(psi_norm, 0.0, 1.0) ** self.alpha_m,
                 )
             )
         )
