@@ -1,45 +1,54 @@
-FreeGS4E library
-================
+# FreeGS4E package internals
 
-Tests and examples using components of the library
+This directory contains the LGPL-licensed equilibrium backend used by
+FreeGSNKE. The supported surface and the status of retained FreeGS modules are
+documented in the repository-level [support scope](../SUPPORT.md).
 
-Testing
--------
+## Testing
 
-To run the unit tests, install [pytest](https://docs.pytest.org/en/latest/) and then run:
+Run the complete backend suite from the repository root with:
 
-    $ pytest
+```shell
+python -m pytest
+```
 
-Multigrid solver
-----------------
+## Linear solver
 
-The code in multigrid.py solves elliptic equations in a square domain, with Dirichlet (fixed value)
-boundary conditions. The smoother is a simple Jacobi method, and 2nd order
-central differences is used to discretise the operator. 
-The test case can be run with:
+`multigrid.createVcycle` retains both direct and iterative implementations.
+The supported FreeGS4E and FreeGSNKE equilibrium paths currently use a
+single-level direct solve (`direct=True`).
 
-    $ python multigrid.py
+## Historical iterative multigrid demonstration
 
-This runs two solves. Both start with an initial maximum residual of 1.0.
-The first simulation uses only the full size mesh (no multigrid). 
-After 100 iterations it has only reduced the maximum residual error to 0.87
+> [!WARNING]
+> The iterative multigrid path is retained legacy functionality. It is not used
+> by the supported FreeGS4E or FreeGSNKE equilibrium workflows and is not
+> covered by representative correctness tests. Its numerical behaviour is
+> therefore not warranted.
 
-    0 0.998475284655
-    ...
-    49 0.929067444026
-    ...
-    99 0.867532420282
+`multigrid.py` contains a demonstration for a two-dimensional Poisson problem
+on a square domain with fixed-value boundary conditions. It uses second-order
+central differences and compares Jacobi smoothing on the full mesh with a
+hierarchy of successively coarser meshes. Run the current demonstration from
+the repository root with:
 
-The second test solves the same problem, but now using 5 levels of mesh resolution
-(including the original). At each level 10 iterations of the Jacobi smoother
-are performed (5 on the way down, 5 on the way up), and two V-cycles are performed.
-In total then the same number of terations are performed as in the first test. 
-The output is:
+```shell
+python -m freegs4e.multigrid
+```
 
-    Cycle  0 :  0.0338261789164
-    Cycle  1 :  0.0022779802307
+The original demonstration started both solves with a maximum residual of
+`1.0`. In its historical configuration, 100 Jacobi iterations on the full mesh
+reduced the residual only to approximately `0.87`, whereas two multigrid
+V-cycles reported:
 
-So after a single V-cycle the residual is reduced to 0.034, and to 0.0023 after two cycles.
-This comparison based on iteration count is not really fair, because there is some overhead for the interpolations. 
-On the other hand, most of the jacobi iterations are on a course mesh which is quicker than
-an iteration on the full size mesh. 
+```text
+Cycle 0: 0.0338261789164
+Cycle 1: 0.0022779802307
+```
+
+This comparison was illustrative rather than a controlled performance
+benchmark: interpolation adds overhead, while most multigrid smoothing occurs
+on cheaper coarse meshes. The current script configuration and output have
+since changed, so the values above are retained as historical context and are
+not expected test results or evidence that the iterative implementation remains
+correct.

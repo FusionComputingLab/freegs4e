@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from . import jtor
+from .gradshafranov import mu0
 
 
 def test_psinorm_range():
@@ -52,6 +53,76 @@ def test_profile_jtor_stores_plotting_metadata():
     assert hasattr(profiles, "psi_bndry")
     assert hasattr(profiles, "diverted_core_mask")
     assert hasattr(profiles, "limiter_core_mask")
+
+
+def _nonunit_alpha_m_profile_grid():
+    R, Z = np.meshgrid(
+        np.linspace(0.5, 1.5, 65),
+        np.linspace(-1.0, 1.0, 65),
+        indexing="ij",
+    )
+    psi = np.exp((-((R - 1.0) ** 2) - Z**2) * 3) + np.exp(
+        (-((R - 1.0) ** 2) - (Z + 1.0) ** 2) * 3
+    )
+    return R, Z, psi
+
+
+def test_constrain_betap_ip_matches_requested_beta_for_nonunit_alpha_m():
+    requested_betap = 0.2
+    profiles = jtor.ConstrainBetapIp(
+        requested_betap, 2e5, 2.0, alpha_m=4.0, alpha_n=1.0
+    )
+    R, Z, psi = _nonunit_alpha_m_profile_grid()
+
+    current_density = profiles.Jtor(R, Z, psi)
+    dR = R[1, 0] - R[0, 0]
+    dZ = Z[0, 1] - Z[0, 0]
+    psi_norm = (psi - profiles.psi_axis) / (
+        profiles.psi_bndry - profiles.psi_axis
+    )
+    pressure = profiles.pressure(psi_norm) * profiles.limiter_core_mask
+    calculated_betap = (
+        (8.0 * np.pi / mu0)
+        * np.sum(pressure)
+        * dR
+        * dZ
+        / (np.sum(current_density) * dR * dZ) ** 2
+    )
+
+    assert np.isclose(calculated_betap, requested_betap, rtol=1e-10)
+
+
+def test_constrain_paxis_ip_matches_requested_pressure_for_nonunit_alpha_m():
+    requested_paxis = 1.2e3
+    profiles = jtor.ConstrainPaxisIp(
+        requested_paxis, 2e5, 2.0, alpha_m=4.0, alpha_n=1.0
+    )
+    R, Z, psi = _nonunit_alpha_m_profile_grid()
+
+    profiles.Jtor(R, Z, psi)
+
+    assert np.isclose(profiles.pressure(np.asarray(0.0)), requested_paxis)
+
+
+def test_fiesta_topeol_is_consistent_for_nonunit_alpha_m():
+    requested_current = 2e5
+    profiles = jtor.Fiesta_Topeol(
+        0.35, requested_current, 2.0, alpha_m=4.0, alpha_n=1.0
+    )
+    R, Z, psi = _nonunit_alpha_m_profile_grid()
+
+    current_density = profiles.Jtor(R, Z, psi)
+    dR = R[1, 0] - R[0, 0]
+    dZ = Z[0, 1] - Z[0, 0]
+    psi_norm = (psi - profiles.psi_axis) / (
+        profiles.psi_bndry - profiles.psi_axis
+    )
+    reconstructed = (
+        R * profiles.pprime(psi_norm) + profiles.ffprime(psi_norm) / (mu0 * R)
+    ) * profiles.limiter_core_mask
+
+    assert np.isclose(np.sum(current_density) * dR * dZ, requested_current)
+    np.testing.assert_allclose(current_density, reconstructed)
 
 
 def _continuity_test_profile(shape):

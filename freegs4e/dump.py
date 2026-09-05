@@ -1,7 +1,9 @@
 """
-Class for reading/writing freegs4e `Equilibrium` objects
+Legacy HDF5 persistence for FreeGS4E `Equilibrium` objects.
 
-Currently just HDF5 via h5py
+This inherited format is not used by FreeGSNKE and is not part of its supported
+backend API. The isolated HDF5 round trip remains tested while the legacy I/O
+surface is reviewed.
 
 License
 -------
@@ -61,7 +63,7 @@ class OutputFile(object):
 
     Given an Equilibrium object, eq, write to file like:
 
-    >>> with freegs.OutputFile("test_readwrite.h5", 'w') as f:
+    >>> with freegs4e.OutputFile("test_readwrite.h5", 'w') as f:
     ...     f.write_equilibrium(eq)
 
     Read back into an Equilibrium like so:

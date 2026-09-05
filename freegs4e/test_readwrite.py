@@ -10,7 +10,7 @@ import freegs4e
     reason="fails because of the removal of solver in freegs4e Equilibrium, but has an older issue with opoints since v 0.12.0 at least"
 )
 def test_readwrite():
-    """Test reading/writing to a file round-trip"""
+    """Test HDF5 reading/writing independently of the legacy Picard solver."""
 
     for tokamak in [
         freegs4e.machine.TestTokamak(),
@@ -27,21 +27,6 @@ def test_readwrite():
             ny=17,
             boundary=freegs4e.boundary.freeBoundaryHagenow,
         )
-        profiles = freegs4e.jtor.ConstrainPaxisIp(1e4, 1e6, 2.0)
-
-        # Note here the X-point locations and isoflux locations are not the same.
-        # The result will be an unbalanced double null configuration, where the
-        # X-points are on different flux surfaces.
-        xpoints = [(1.1, -0.6), (1.1, 0.8)]
-        isoflux = [(1.1, -0.6, 1.1, 0.6)]
-        constrain = freegs4e.control.constrain(
-            xpoints=xpoints, isoflux=isoflux
-        )
-
-        freegs4e.solve(
-            eq, profiles, constrain, maxits=25, atol=1e-3, rtol=1e-1
-        )
-
         memory_file = io.BytesIO()
 
         with freegs4e.OutputFile(memory_file, "w") as f:
@@ -52,3 +37,27 @@ def test_readwrite():
 
         assert tokamak == read_eq.tokamak
         assert allclose(eq.psi(), read_eq.psi())
+
+
+def test_original_readwrite_solve_setup_is_unsupported():
+    """Record the unsupported standalone solve formerly hidden by CI."""
+    eq = freegs4e.Equilibrium(
+        tokamak=freegs4e.machine.TestTokamak(),
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=17,
+        ny=17,
+        boundary=freegs4e.boundary.freeBoundaryHagenow,
+    )
+    profiles = freegs4e.jtor.ConstrainPaxisIp(1e4, 1e6, 2.0)
+    constrain = freegs4e.control.constrain(
+        xpoints=[(1.1, -0.6), (1.1, 0.8)],
+        isoflux=[(1.1, -0.6, 1.1, 0.6)],
+    )
+
+    with pytest.raises(ValueError, match="No opoints found"):
+        freegs4e.solve(
+            eq, profiles, constrain, maxits=25, atol=1e-3, rtol=1e-1
+        )
