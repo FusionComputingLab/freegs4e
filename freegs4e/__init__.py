@@ -39,7 +39,7 @@ __version__ = metadata.version("freegs4e")
 # Retained for compatibility with inherited FreeGS imports. ``solve``,
 # ``control``, and ``OutputFile`` are not FreeGSNKE backend entry points; see
 # SUPPORT.md for the supported interface and current legacy status.
-from . import control, jtor, machine, plotting
+from . import control, jtor, machine, multigrid, plotting
 from .dump import OutputFile
 from .equilibrium import Equilibrium
 from .picard import solve

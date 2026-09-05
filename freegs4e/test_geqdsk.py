@@ -1,6 +1,7 @@
 from io import StringIO
 
 import numpy
+import pytest
 
 from . import _geqdsk, geqdsk, machine
 
