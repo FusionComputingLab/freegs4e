@@ -1934,7 +1934,8 @@ class Equilibrium:
         """
         Calculates poloidal beta from the following definition:
 
-            betap = ( integral(p) dV / V) / (integral(Bpol) dl / L)**2,
+            betap = 2 * mu0 * ( integral(p) dV / V)
+                    / (integral(Bpol) dl / L)**2,
 
         where:
          - p = pressure field.
@@ -1987,9 +1988,12 @@ class Equilibrium:
         # integrate
         integral_Bpol_lcfs = trapezoid(Bp, l)
 
-        return (pressure_integral / self.plasmaVolume()) / (
-            integral_Bpol_lcfs / self.separatrix_length()
-        ) ** 2
+        return (
+            2.0
+            * mu0
+            * (pressure_integral / self.plasmaVolume())
+            / (integral_Bpol_lcfs / self.separatrix_length()) ** 2
+        )
 
     def poloidalBeta4(self):
         """
