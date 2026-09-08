@@ -1,18 +1,26 @@
 
 # FreeGS4E: Free-boundary Grad-Shafranov for Evolution
 
-FreeGS4E is a package forked from [FreeGS](https://github.com/freegs-plasma/freegs) (v0.6.1), which has the capability to solve the static inverse free-boundary Grad-Shafranov problem for plasma equilibria in tokamak devices.
+FreeGS4E is a package forked from [FreeGS](https://github.com/freegs-plasma/freegs) (v0.6.1). It retains substantial code inherited from that general-purpose equilibrium solver, but not all inherited workflows remain supported.
 
 Its intended usage is as an underlying solver for the dynamic (time-dependent) free-boundary equilibrium solver [FreeGSNKE](https://github.com/FusionComputingLab/freegsnke).
 
-The addtion and removal of certain features within FreeGS, as well as some performance optimisation, were neccesary to enable this and so FreeGS4E has now diverged significantly from original FreeGS codebase.
+The addition and removal of features, together with performance optimisations needed by FreeGSNKE, mean that FreeGS4E has diverged significantly from the original FreeGS codebase.
 
 Therefore, FreeGS4E is **not intended to be a drop in replacement solver for FreeGS** but rather is designed for use explicitly **within** [FreeGSNKE](https://github.com/FusionComputingLab/freegsnke).
+
+The presence of an inherited module does not by itself mean that its original
+FreeGS workflow is supported. In particular, the standalone Picard inverse
+solver and its original control-constraint interface are not supported entry
+points for FreeGSNKE. See the
+[support scope](https://github.com/FusionComputingLab/freegs4e/blob/main/SUPPORT.md)
+for the backend API used by FreeGSNKE, known unsupported behaviour, and the
+status of retained legacy code.
 
 
 ## Installation
 
-Given FreeGS4E is not a standalone equilibrium solver, we recommend following the [installation instructions for FreeGSNKE](https://docs.freegsnke.com/#installation) (which will install FreeGS4E automatically). 
+Because FreeGS4E is not a standalone equilibrium solver, we recommend following the [installation instructions for FreeGSNKE](https://docs.freegsnke.com/#installation) (which will install FreeGS4E automatically).
 
 If you would, however, like to contribute to FreeGS4E directly, please see the installation instructions in the section on contributing below.
 
@@ -25,7 +33,8 @@ tested in both repositories before release.
 
 ## Getting started
 
-All of the examples for getting started can be found within the `freegsnke/examples` directory.
+Supported examples can be found in the `freegsnke/examples` directory. Examples
+from the original FreeGS project should not be assumed to run with FreeGS4E.
 
 
 ## Contributing

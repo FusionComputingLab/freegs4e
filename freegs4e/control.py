@@ -1,7 +1,10 @@
 """
-Plasma control system
+Legacy FreeGS plasma-control constraints.
 
-Use constraints to adjust coil currents
+These classes belong to the inherited standalone Picard inverse workflow. They
+are not used by FreeGSNKE, which supplies its own inverse-solver constraints.
+The module is currently retained for compatibility while the legacy API is
+reviewed.
 """
 
 import numpy as np
@@ -14,8 +17,10 @@ from . import critical
 
 class constrain(object):
     """
-    Adjust coil currents using constraints. To use this class,
-    first create an instance by specifying the constraints
+    Adjust coil currents using the inherited FreeGS constraint implementation.
+
+    This is not a supported FreeGSNKE inverse-solver interface. To use this
+    legacy class, first create an instance by specifying the constraints:
 
     >>> controlsystem = constrain(xpoints = [(1.0, 1.1), (1.0,-1.0)])
 
