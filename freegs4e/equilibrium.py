@@ -164,7 +164,11 @@ class Equilibrium:
             raise ValueError(
                 f"Shape of psi grid {psi.shape} must match grid size ({nx}, {ny})."
             )
-        self._updatePlasmaPsi(psi)
+        # An initial guess is not necessarily an equilibrium. In particular,
+        # the default Gaussian combined with an arbitrary machine vacuum field
+        # may contain no O-point. Build all available caches and metadata, but
+        # do not reject such a provisional state during construction.
+        self._updatePlasmaPsi(psi, allow_no_opoint=True)
 
     def create_psi_plasma_default(
         self, adaptive_centre=False, gpars=(0.5, 0.5, 0, 2)
@@ -2661,7 +2665,7 @@ class Equilibrium:
         # update plasma current
         self._current = np.sum(Jtor) * self.dR * self.dZ
 
-    def _updatePlasmaPsi(self, plasma_psi):
+    def _updatePlasmaPsi(self, plasma_psi, *, allow_no_opoint=False):
         """
         Sets the plasma psi data using spline interpoation coefficients.
 
@@ -2669,6 +2673,11 @@ class Equilibrium:
         ----------
         plasma_psi: np.array
             Plasma poloidal magnetic flux over (R,Z) [Webers/2pi].
+        allow_no_opoint: bool
+            If ``True``, retain the flux and interpolation cache when the total
+            field has no magnetic axis, and clear equilibrium-only metadata.
+            This is intended for provisional initial guesses. Later solver
+            updates remain strict by default.
 
         Returns
         -------
@@ -2690,7 +2699,16 @@ class Equilibrium:
         # Note that this may fail if there are no X-points, so it should not raise an error
         # Analyse the equilibrium, finding O- and X-points
         psi = self.psi()
-        opt, xpt = critical.find_critical(self.R, self.Z, psi)
+        try:
+            opt, xpt = critical.find_critical(self.R, self.Z, psi)
+        except critical.NoOpointError:
+            if not allow_no_opoint:
+                raise
+            self.psi_axis = None
+            self.psi_bndry = None
+            self.mask = None
+            self.mask_func = None
+            return
         self.psi_axis = opt[0][2]
 
         if len(xpt) > 0:

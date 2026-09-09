@@ -1,9 +1,38 @@
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from . import boundary, equilibrium, jtor, picard
 from .gradshafranov import mu0
+
+
+def test_initial_guess_without_opoint_is_retained():
+    eq = equilibrium.Equilibrium(
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=33,
+        ny=33,
+        psi=lambda provisional_eq: provisional_eq.R.copy(),
+    )
+
+    assert eq.plasma_psi.shape == (33, 33)
+    assert eq.psi_func is not None
+    assert eq.psi_axis is None
+    assert eq.psi_bndry is None
+    assert eq.mask is None
+    assert eq.mask_func is None
+
+
+def test_solver_update_without_opoint_remains_strict():
+    eq = equilibrium.Equilibrium(
+        Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=33, ny=33
+    )
+
+    with pytest.raises(ValueError, match="No opoints found"):
+        eq._updatePlasmaPsi(eq.R.copy())
 
 
 def test_inoutseparatrix():

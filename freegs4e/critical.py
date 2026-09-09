@@ -56,6 +56,10 @@ from . import bilinear_interpolation
 # from unittest import makeSuite
 
 
+class NoOpointError(ValueError):
+    """Raised when a flux field contains no magnetic O-point."""
+
+
 def find_critical_old(R, Z, psi, discard_xpoints=True):
     """
     Finds the critical points in the total poloidal flux map ψ.
@@ -450,7 +454,7 @@ def fastcrit(R, Z, psi, mask_inside_limiter):
     len_opoint = len(opoint)
     if len_opoint == 0:
         # Can't order primary O-point, X-point so return
-        raise ValueError("No opoints found!")
+        raise NoOpointError("No opoints found!")
         # return opoint, xpoint
     elif mask_inside_limiter is not None:
         # remove any opoint outside the limiter
@@ -461,7 +465,7 @@ def fastcrit(R, Z, psi, mask_inside_limiter):
     len_opoint = len(opoint)
     if len_opoint == 0:
         # Can't order primary O-point, X-point so return
-        raise ValueError("No opoints found!")
+        raise NoOpointError("No opoints found!")
     elif len_opoint > 1:
         # Find primary O-point by sorting by distance from middle of domain
         Rmid = 0.5 * (R[-1, 0] + R[0, 0])
