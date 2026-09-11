@@ -5,3 +5,5 @@ matplotlib>=3.9,<4
 h5py>=3.11,<4
 numba>=0.60,<1
 Shapely>=2.0.6,<3
+threadpoolctl~=3.6
+numexpr~=2.14
