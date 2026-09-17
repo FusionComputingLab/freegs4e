@@ -22,6 +22,7 @@ along with FreeGS4E.  If not, see <http://www.gnu.org/licenses/>.
 
 import warnings
 
+import contourpy
 import matplotlib.pyplot as plt
 import numpy as np
 import shapely as sh
@@ -725,7 +726,7 @@ class Equilibrium:
 
         # convert to a scalar if only single output
         if len(q) == 1:
-            return np.asscalar(q)
+            return q.item()
 
         return q
 
@@ -2560,21 +2561,32 @@ class Equilibrium:
             self.psiNRZ(R=self.R, Z=self.Z), mask=self.mask_outside_limiter
         )
 
+        # magnetic axis location does not depend on psi_n - compute once
+        mag_axis = self.magneticAxis()[0:2]
+
+        # spline of the total (plasma + coil) psi field, reused below to get
+        # cheap Br/Bz/Bpol on each flux surface via derivatives of the spline
+        psi_total_func = interpolate.RectBivariateSpline(
+            self.R_1D, self.Z_1D, self.psi()
+        )
+
+        # single contour generator, reused for every psi_n level instead of
+        cont_gen = contourpy.contour_generator(
+            x=self.R,
+            y=self.Z,
+            z=masked_psi,
+            line_type=contourpy.LineType.Separate,
+        )
+
         flux_averaged_quantity = np.zeros(len(psi_n))
         for i, val in enumerate(psi_n):
 
-            # find contour object for flux value
-            cs = plt.contour(self.R, self.Z, masked_psi, levels=[val])
-            plt.close()  # this isn't the most elegant but we don't need the plot itself
-
-            # for each item in the contour object there's a list of points in (r,z) (i.e. a curve)
-            psi_boundary_lines = []
-            for item in cs.allsegs[0]:
-                if item.shape[0] > 0:
-                    psi_boundary_lines.append(item)
+            # for each contour line there's a list of points in (r,z) (i.e. a curve)
+            psi_boundary_lines = [
+                line for line in cont_gen.lines(val) if line.shape[0] > 0
+            ]
 
             # find the flux surface closest to the magnetic axis
-            mag_axis = self.magneticAxis()[0:2]
             min_distances = [
                 np.min(np.linalg.norm(line - mag_axis, axis=1))
                 for line in psi_boundary_lines
@@ -2589,11 +2601,15 @@ class Equilibrium:
             )  # element-wise arc length
             l = np.concatenate(([0], np.cumsum(dl)))  # cumulative arc length
 
-            # evaluate 1/Bp on the flux surface
-            Bp_inv = 1 / self.Bpol(flux_surface[:, 0], flux_surface[:, 1])
+            # evaluate 1/Bp on the flux surface, from the total-psi spline:
+            #   Br(R,Z) = -(1/R) dpsi/dZ,   Bz(R,Z) = (1/R) dpsi/dR
+            Rc, Zc = flux_surface[:, 0], flux_surface[:, 1]
+            Br = -psi_total_func(Rc, Zc, dy=1, grid=False) / Rc
+            Bz = psi_total_func(Rc, Zc, dx=1, grid=False) / Rc
+            Bp_inv = 1 / np.sqrt(Br**2 + Bz**2)
 
             # evaluate f on the flux surface
-            f_on_flux_surf = f(flux_surface[:, 0], flux_surface[:, 1])
+            f_on_flux_surf = f(Rc, Zc)
 
             # integrate with trapezoidal rule
             integral_f_inv_Bpol = trapezoid(f_on_flux_surf * Bp_inv, l)

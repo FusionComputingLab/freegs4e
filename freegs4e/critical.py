@@ -1102,10 +1102,12 @@ def find_safety(
         opoint, xpoint = find_critical(eq.R, eq.Z, psi)
 
     if (xpoint is None) or (len(xpoint) == 0):
-        # No X-point
-        raise ValueError("No X-point so no separatrix")
+        # No X-point - e.g. a limiter-bounded plasma
+        psi_boundary = eq.psi_bndry
     else:
-        psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+        psi_boundary = xpoint[0][2]
+
+    psinormal = (psi - opoint[0][2]) / (psi_boundary - opoint[0][2])
 
     psifunc = interpolate.RectBivariateSpline(
         eq.R[:, 0], eq.Z[0, :], psinormal
