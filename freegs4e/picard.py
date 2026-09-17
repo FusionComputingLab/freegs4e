@@ -1,5 +1,9 @@
 """
-Routines for solving the nonlinear part of the Grad-Shafranov equation
+Legacy routines for solving the nonlinear part of the Grad-Shafranov equation.
+
+This inherited standalone solver is not used or supported by FreeGSNKE. Use
+the static or evolutive solvers provided by FreeGSNKE instead. The module is
+currently retained for compatibility while the legacy API is reviewed.
 
 Copyright 2024 Nicola C. Amorisco, Adriano Agnello, George K. Holt, Ben Dudson.
 
@@ -36,7 +40,13 @@ def solve(
     convergenceInfo=False,
 ):
     """
-    Perform Picard iteration to find solution to the Grad-Shafranov equation
+    Perform the inherited standalone Picard iteration.
+
+    Notes
+    -----
+    This is not a supported FreeGSNKE backend entry point. In particular, the
+    original inverse workflow using ``freegs4e.control`` is known not to satisfy
+    its inherited regression setup.
 
     eq       - an Equilibrium object (equilibrium.py)
     profiles - A Profile object for toroidal current (jtor.py)
