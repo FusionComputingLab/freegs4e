@@ -171,7 +171,7 @@ class GSsparse:
         self.Zmin = Zmin
         self.Zmax = Zmax
 
-        self.dtype = np.float64
+        self.dtype = dtype
 
     def __call__(self, nx, ny):
         return self.discretize(nx, ny)
@@ -194,7 +194,8 @@ class GSsparse:
             The operator matrix.
         """
 
-        # TODO: update to faster CSC version
+        # This method could be optimized by vectorizing with a COO approach
+        # It may not be worth it though, considering the DST solver will always be faster
 
         # calculate grid spacing
         dR = (self.Rmax - self.Rmin) / (nx - 1)

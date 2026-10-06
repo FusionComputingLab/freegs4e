@@ -70,9 +70,12 @@ class GSSolver(ABC):
 
 class GSLUSolver(GSSolver):
     """
-    LU-Sparse Grad–Shafranov solver on a (R, Z) rectangular grid with regular spacing.
+    Sparse-LU solver for the Grad-Shafranov equation on a rectangular (R,Z) grid with
+    equally spaced points. Solves:
 
-    Solves (d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR) ψ = rhs
+    (d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR) ψ = -μ_0 R J_{phi}(ψ),
+
+    with the Dirichlet (free-)boundary conditions applied.
 
     Parameters
     ----------
@@ -152,12 +155,14 @@ class GSLUSolver(GSSolver):
         return self.solver(rhs.reshape(-1))
 
 
-# TODO: match docstring to other GS operators
 class GSDSTSolver(GSSolver):
     """
-    DST-based Grad–Shafranov solver on a (R, Z) rectangular grid with regular spacing.
+    Discrete Sine Transform (DST) based solver for the Grad-Shafranov equation on a rectangular (R,Z) grid with
+    equally spaced points. Solves:
 
-    Solves (d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR) ψ = rhs
+    (d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR) ψ = -μ_0 R J_{phi}(ψ),
+
+    with the Dirichlet (free-)boundary conditions applied.
 
     Parameters
     ----------
@@ -232,6 +237,10 @@ class GSDSTSolver(GSSolver):
         if Nint < 1:
             raise ValueError(
                 f"Need at least 3 Z points to have an interior. Current number: {nz}"
+            )
+        elif nr < 3:
+            raise ValueError(
+                f"Need at least 3 R points for the discretization scheme. Current number: {nr}"
             )
 
         # Z eigenvalues mu_m > 0 for Dirichlet interior FD Laplacian
