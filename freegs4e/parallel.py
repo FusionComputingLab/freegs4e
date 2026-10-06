@@ -141,7 +141,7 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
 
     if out is None:
         # output array necessary for parallel implementation
-        out = np.empty(outshape)
+        out = np.empty(outshape, dtype=a.dtype)
     elif not isinstance(out, np.ndarray):
         # we rely on numpy behavior for the parallelization
         raise TypeError("return arrays must be of ArrayType")
@@ -185,7 +185,7 @@ def threaded_take(a, indices, axis=None, out=None, mode="raise"):
 
             start = end
             end = (
-                start + step + (i + 1) * (i < rem)
+                start + step + (i < rem)
             )  # first few slices get one more element to deal with remainder
 
             idcs_slice = indices[start:end]
@@ -249,8 +249,10 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
     # The wrapper enssures that BLAS/OpenMP threads will not be spawned by scipy as this
     # could cause oversubscription issues.
 
-    if out:
+    if out is not None:
         warnings.warn("out argument in threaded_elliptics_ek is ignored")
+    #    if not isinstance(out,tuple):
+    #        raise TypeError("out must be a tuple of arrays")
 
     num_threads_total = get_num_threads()
 
@@ -280,9 +282,15 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
         k2 = k2.reshape(inshape)
         return ellipe(k2), ellipk(k2)
 
+    # match numpy/scipy casting behavior for ufuncs
+    if np.issubdtype(k2.dtype, np.floating):
+        out_type = k2.dtype
+    else:
+        out_type = np.float64
+
     # output arrays
-    eie = np.empty(k2.shape)
-    eik = np.empty(k2.shape)
+    eie = np.empty(k2.shape, dtype=out_type)
+    eik = np.empty(k2.shape, dtype=out_type)
 
     with ThreadPoolExecutor(max_workers=num_threads_total) as executor:
 
@@ -296,7 +304,7 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
 
             start = end
             end = (
-                start + step + (i + 1) * (i < rem)
+                start + step + (i < rem)
             )  # first few slices get one more element to deal with remainder
 
             k2_slice = k2[start:end]
@@ -369,7 +377,7 @@ def threaded_clip(
 
     if out is None:
         # output array necessary for parallel implementation
-        out = np.empty(k2.shape)
+        out = np.empty_like(k2)
     elif not isinstance(out, np.ndarray):
         # we rely on numpy behavior for the parallelization
         raise TypeError("return arrays must be of ArrayType")
@@ -429,7 +437,7 @@ def threaded_clip(
 
             start = end
             end = (
-                start + step + (i + 1) * (i < rem)
+                start + step + (i < rem)
             )  # first few slices get one more element to deal with remainder
 
             k2_slice = k2[start:end]
@@ -450,53 +458,54 @@ def threaded_clip(
     return out
 
 
-class ThreadManagedRegion:
-    """
-    EXPERIMENTAL. Defines a context manager to set a specific number of threads for a region
-    of code. Carries large overheads.
-    """
-
-    context_depth = 0  # helps keep track of nested managed regions
-
-    def __init__(self, num_threads):
-
-        self.preset_threads = get_num_threads()
-
-        if isinstance(num_threads, int) and num_threads > 0:
-            self.context_threads = num_threads
-        elif num_threads == "default":
-            self.context_threads = self.preset_threads
-        elif num_threads == "max":
-            num_avail = len(
-                os.sched_getaffinity(0)
-            )  # TODO: from Python 3.13, process_cpu_count() preferred
-            self.context_threads = num_avail
-        else:
-            raise TypeError(
-                "Invalid number of threads '{}'. Should be an integer >1, 'default' or 'max'".format(
-                    num_threads
-                )
-            )
-
-    def __enter__(self):
-        ThreadManagedRegion.context_depth += 1
-        if context_depth == 1:
-            set_num_threads(self.context_threads)
-
-    def __exit__(self, *_):
-        if context_depth == 1:
-            set_num_threads(self.preset_threads)
-        ThreadManagedRegion.context_depth -= 1
-
-
-class SingleThreadedRegion(ThreadManagedRegion):
-    """
-    EXPERIMENTAL. Defines a context manager that enforces single threaded execution in a region
-    of code.
-    """
-
-    def __init__(self):
-        super().__init__(1)
+# class ThreadManagedRegion:
+#    """
+#    EXPERIMENTAL. Defines a context manager to set a specific number of threads for a region
+#    of code. Carries large overheads.
+#    """
+#
+#    context_depth = 0  # helps keep track of nested managed regions
+#
+#    def __init__(self, num_threads):
+#
+#        self.preset_threads = get_num_threads()
+#
+#        if isinstance(num_threads, int) and num_threads > 0:
+#            self.context_threads = num_threads
+#        elif num_threads == "default":
+#            self.context_threads = self.preset_threads
+#        elif num_threads == "max":
+#            # alternatives: sched_getaffinity(0) (UNIX-only), libthreadcount (def below), process_cpu_count (py3.13+)
+#            num_avail = len(
+#                os.cpu_count()
+#            )
+#            self.context_threads = num_avail
+#        else:
+#            raise TypeError(
+#                "Invalid number of threads '{}'. Should be an integer >1, 'default' or 'max'".format(
+#                    num_threads
+#                )
+#            )
+#
+#    def __enter__(self):
+#        ThreadManagedRegion.context_depth += 1
+#        if ThreadManagedRegion.context_depth == 1:
+#            set_num_threads(self.context_threads)
+#
+#    def __exit__(self, *_):
+#        if context_depth == 1:
+#            set_num_threads(self.preset_threads)
+#        ThreadManagedRegion.context_depth -= 1
+#
+#
+# class SingleThreadedRegion(ThreadManagedRegion):
+#    """
+#    EXPERIMENTAL. Defines a context manager that enforces single threaded execution in a region
+#    of code.
+#    """
+#
+#    def __init__(self):
+#        super().__init__(1)
 
 
 class CustomThreadController(LibController):
