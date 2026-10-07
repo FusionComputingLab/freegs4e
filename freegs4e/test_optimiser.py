@@ -1,3 +1,7 @@
+import random
+
+import pytest
+
 from . import optimiser
 
 # Tests and example of solving optimisation problem
@@ -7,6 +11,13 @@ from . import optimiser
 #
 # Run this script to show animation of the solution, or run
 # tests using pytest.
+
+
+@pytest.fixture(autouse=True)
+def seed_random():
+    # The optimiser uses the standard library's random numbers: seed them so that
+    # the tests are deterministic
+    random.seed(12345)
 
 
 class ControlIndex:
@@ -33,11 +44,9 @@ def calculate_score(coefs):
 
 
 def test_quadratic():
-    # TODO: can randomly fail
-
     # Check that a quadratic can be solved
-    # Note that the optimiser uses random numbers so
-    # there is a small chance of this test failing even if correct
+    # Note that the optimiser uses random numbers, which are seeded
+    # (see the seed_random fixture) to keep the test deterministic
     start_values = [0.1, 0.1]  # Starting guess
 
     # The optimiser can control two coefficients,
@@ -54,7 +63,6 @@ def test_quadratic():
 
 
 def test_reducing():
-    # TODO: fails ocassionally?
     # Test that the best score never goes up
     start_values = [0.1, 0.1]  # Starting guess
 
@@ -85,8 +93,6 @@ def test_reducing():
 
 
 def test_pick_all():
-    # TODO: this test has a small chance of randomly failing, consider changing
-
     vals = optimiser.pickUnique(10, 10, [])
     # Should be a scrambled list of [0...10]
 
