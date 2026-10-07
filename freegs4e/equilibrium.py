@@ -32,12 +32,12 @@ from scipy.integrate import cumulative_trapezoid, trapezoid
 from scipy.optimize import least_squares
 from scipy.spatial.distance import pdist, squareform
 
+from . import multigrid  # prevents bugs with imports elsewhere
 from . import critical, machine, polygons
 from .boundary import fixedBoundary, freeBoundary  # finds free-boundary
 from .gradshafranov import mu0
 from .gs_solver import GSLUSolver
 from .plotting import plotEquilibrium
-from . import multigrid  # prevents bugs with imports elsewhere
 
 
 class Equilibrium:
