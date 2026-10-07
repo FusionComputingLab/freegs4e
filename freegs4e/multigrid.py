@@ -43,13 +43,15 @@ class MGDirect:
         Initialise solver
 
         A   - The matrix to solve
-        shape - The shape of the FD grid
         """
 
-        #        self.dimensions = shape
         self.solver = factorized(A.tocsc())  # LU decompose
 
     def solve(self, x, b):
+        """
+        Solve Ax = b by direct LU solve. The initial guess x is unused.
+        Returns the solution with the shape of b.
+        """
         b1d = reshape(b, -1)  # 1D view
 
         x = self.solver(b1d)
@@ -57,6 +59,7 @@ class MGDirect:
         return reshape(x, b.shape)
 
     def __call__(self, x, b):
+        """Equivalent to `solve(x, b)`."""
         return self.solve(x, b)
 
 
@@ -66,7 +69,6 @@ class MGJacobi:
         Initialise solver
 
         A   - The matrix to solve
-        shape - The shape of the FD grid
         subsolver - An operator at lower resolution
         ncycle - Number of V-cycles
         niter - Number of Jacobi iterations
@@ -126,6 +128,7 @@ class MGJacobi:
         return x.reshape(xi.shape)
 
     def __call__(self, xi, bi, ncycle=None, niter=None):
+        """Equivalent to `solve(xi, bi, ncycle, niter)`."""
         return self.solve(xi, bi, ncycle, niter)
 
 
@@ -137,11 +140,11 @@ def createMultigridSolver(
     resolution.
 
     Parameters
-    -------
+    ----------
     R: ndarray (nr,nz)
         ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
     Z: ndarray (nr,nz)
-        ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
+        ndarray of the shape of the domain (nr,nz) with the height of each point in the grid
     order - The order of the internal sparse solver
     nlevels - Number of multigrid levels
     direct - Lowest level uses direct solver
@@ -198,7 +201,7 @@ def createVcycle(
     Create a hierarchy of solvers in a multigrid V-cycle
 
     Parameters
-    -------
+    ----------
     nx, ny - The highest resolution
     generator(nx,ny) - Returns a sparse matrix, given resolution
     nlevels - Number of multigrid levels

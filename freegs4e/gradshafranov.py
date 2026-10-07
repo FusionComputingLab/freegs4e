@@ -56,6 +56,8 @@ class GSElliptic:
         ----------
         Rmin : float
             Minimum major radius [m].
+        dtype : numpy dtype, optional
+            Data type of the output array (default: np.float64).
 
         """
 
@@ -162,6 +164,8 @@ class GSsparse:
             Minimum height [m].
         Zmax : float
             Maximum height [m].
+        dtype : numpy dtype, optional
+            Data type of the matrix entries (default: np.float64).
 
         """
 
@@ -174,6 +178,9 @@ class GSsparse:
         self.dtype = dtype
 
     def __call__(self, nx, ny):
+        """
+        Equivalent to `discretize(nx, ny)` with the default (CSR) format.
+        """
         return self.discretize(nx, ny)
 
     def discretize(self, nx, ny, format="csr"):
@@ -184,14 +191,17 @@ class GSsparse:
         Parameters
         ----------
         nx : int
-            Number of radial grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
+            Number of radial grid points (including boundaries).
         ny : int
-            Number of vertical grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
+            Number of vertical grid points (including boundaries).
+        format : str, optional
+            Sparse format of the returned matrix, either "csr" (default) or "csc".
+            Any other value falls back to "csr" with a warning.
 
         Returns
         -------
-        np.array
-            The operator matrix.
+        scipy.sparse matrix/array
+            The operator matrix, in the requested sparse format.
         """
 
         # This method could be optimized by vectorizing with a COO approach
@@ -248,7 +258,7 @@ class GSsparse:
 
 class GSsparse4thOrder(GSsparse):
     """
-    Class representing the elliptc operator within the Grad-Shafranov
+    Class representing the elliptic operator within the Grad-Shafranov
     equation:
 
         Δ^* = d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR
@@ -301,6 +311,9 @@ class GSsparse4thOrder(GSsparse):
     ]
 
     def __call__(self, nx, ny):
+        """
+        Equivalent to `discretize(nx, ny)` with the default (CSR) format.
+        """
         return self.discretize(nx, ny)
 
     def discretize(self, nx, ny, format="csr"):
@@ -311,14 +324,17 @@ class GSsparse4thOrder(GSsparse):
         Parameters
         ----------
         nx : int
-            Number of radial grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
+            Number of radial grid points (including boundaries).
         ny : int
-            Number of vertical grid points (must be of form 2^n + 1, n=0,1,2,3,4,5,...).
+            Number of vertical grid points (including boundaries).
+        format : str, optional
+            Sparse format of the returned matrix, either "csr" (default) or "csc".
+            Any other value falls back to "csr" with a warning.
 
         Returns
         -------
-        np.array
-            The operator matrix.
+        scipy.sparse matrix/array
+            The operator matrix, in the requested sparse format.
         """
 
         # calculate grid spacing
@@ -570,13 +586,13 @@ def Greens(Rc, Zc, R, Z, limit_threading=False, scale_factor=1, out=None):
         Radial position where poloidal flux is to be calcualted [m].
     Z : float
         Vertical position where poloidal flux is to be calcualted [m].
-    limit_threading: bool
+    limit_threading : bool, optional
         If True, forces SOME internal functions, with high threading overhead, to run single
         threaded. Multiple threads will still be used for low overhead functionalities.
-        Recommended when the input arrays are small.
-    scale_factor: int
-        Scalar factor to apply on the final result.
-    out: ndarray
+        Recommended when the input arrays are small (default: False).
+    scale_factor : float, optional
+        Scalar factor to apply on the final result (default: 1).
+    out : ndarray, optional
         Pre-allocated buffer for the final result.
 
     Returns

@@ -64,8 +64,9 @@ class Equilibrium:
 
         Parameters
         ----------
-        tokamak : machine.Machine
+        tokamak : machine.Machine | None
             The set of active coils, passive structures, limiter, and magnetic probes in the tokamak.
+            If `None` (default), an empty tokamak (`machine.EmptyTokamak`) is used.
         Rmin : float
             Minimum major radius [m].
         Rmax : float
@@ -87,8 +88,10 @@ class Equilibrium:
             The array (returned by the callable) must have the shape (nx, ny).
         current : float
             Plasma current [A].
-        order : int
-            Deprecated. Kept for backwards compatibility.
+        order : int | None
+            Deprecated, passing a value raises a DeprecationWarning. No solver is created at
+            initialization; the value (default 4) is only used as the order of the sparse-LU
+            solver that is lazily created by `callSolver`.
 
         """
 
@@ -205,28 +208,39 @@ class Equilibrium:
     def setSolverVcycle(
         self, nlevels=1, ncycle=1, niter=1, direct=True, order=4
     ):
-        """Deprecated. Equilibrium objects do not contain solvers"""
+        """
+        Deprecated. Equilibrium objects do not contain a multigrid solver. All arguments
+        are ignored and any previously set solver is discarded, so that the default
+        sparse-LU solver is (lazily) used again.
+        """
         self.setSolver(None)
 
     def setSolver(self, solver):
-        """Deprecated. Equilibrium objects do not contain solvers"""
+        """
+        Deprecated. Sets the solver used by `callSolver`. The object must be callable as
+        `solver(x, b)`, where x is the initial guess and b the right hand side. Passing
+        None restores the default sparse-LU solver (created lazily on next use).
+        """
         self._solver = solver
 
     def callSolver(self, psi, rhs):
         """
-        Calls the solver.
+        Solves the GS elliptic equation for the given right hand side. The solver
+        (a sparse-LU `GSLUSolver` of the order given at initialization) is created
+        lazily on first use, so that constructing an Equilibrium carries no
+        factorization cost.
 
         Parameters
         ----------
         psi : np.array
-            The initial guess [Webers/2pi].
+            The initial guess [Webers/2pi] (unused by the LU solver).
         rhs : np.array
             The right hand side of the GS equation.
 
         Returns
         -------
-        object
-            Returns modified `self._solver` object.
+        np.array
+            The solution of the GS equation, with the shape of `rhs`.
         """
 
         if self.__solver is None:

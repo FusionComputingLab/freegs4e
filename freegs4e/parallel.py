@@ -100,6 +100,31 @@ def get_max_threads():
 
 @thread_controller.wrap(limits={"blas": 1, "openmp": 1})
 def threaded_take(a, indices, axis=None, out=None, mode="raise"):
+    """
+    Parallel wrapper for numpy take. Detailed behavior of the function can be consulted on
+    numpy docs. `indices` is divided into slices and each thread takes from its corresponding
+    slice. Falls back to `np.take` if only one thread is set or there are fewer indices than
+    threads.
+
+    Parameters
+    ----------
+    a : ndarray
+        The source array
+    indices : ndarray
+        The indices of the values to extract. Only numpy ndarrays are supported when running
+        in parallel.
+    axis : int, optional
+        The axis over which to select values. By default, the flattened input array is used.
+    out : ndarray, optional
+        Buffer in which to place the result. Must have the shape of the output.
+    mode : {'raise', 'wrap', 'clip'}, optional
+        Out-of-bounds index handling, as per numpy docs.
+
+    Returns
+    -------
+    ndarray
+        The extracted values, with the dtype of `a`.
+    """
 
     num_threads = get_num_threads()
 
@@ -251,8 +276,6 @@ def threaded_elliptics_ek(k2, out=None, single_thread=False):
 
     if out is not None:
         warnings.warn("out argument in threaded_elliptics_ek is ignored")
-    #    if not isinstance(out,tuple):
-    #        raise TypeError("out must be a tuple of arrays")
 
     num_threads_total = get_num_threads()
 
@@ -343,9 +366,9 @@ def threaded_clip(
     ----------
     k2 : ndarray
         Array containing the elements to clip
-    a_min, a_max : array_like or None
+    amin, amax : array_like or None
         Minimum and maximum value. If ``None``, clipping is not performed on
-        the corresponding edge. If both ``a_min`` and ``a_max`` are ``None``,
+        the corresponding edge. If both ``amin`` and ``amax`` are ``None``,
         the elements of the returned array stay the same. Both are broadcasted
         against ``a``.
     out : ndarray, optional
@@ -456,56 +479,6 @@ def threaded_clip(
     out.resize(outshape)
 
     return out
-
-
-# class ThreadManagedRegion:
-#    """
-#    EXPERIMENTAL. Defines a context manager to set a specific number of threads for a region
-#    of code. Carries large overheads.
-#    """
-#
-#    context_depth = 0  # helps keep track of nested managed regions
-#
-#    def __init__(self, num_threads):
-#
-#        self.preset_threads = get_num_threads()
-#
-#        if isinstance(num_threads, int) and num_threads > 0:
-#            self.context_threads = num_threads
-#        elif num_threads == "default":
-#            self.context_threads = self.preset_threads
-#        elif num_threads == "max":
-#            # alternatives: sched_getaffinity(0) (UNIX-only), libthreadcount (def below), process_cpu_count (py3.13+)
-#            num_avail = len(
-#                os.cpu_count()
-#            )
-#            self.context_threads = num_avail
-#        else:
-#            raise TypeError(
-#                "Invalid number of threads '{}'. Should be an integer >1, 'default' or 'max'".format(
-#                    num_threads
-#                )
-#            )
-#
-#    def __enter__(self):
-#        ThreadManagedRegion.context_depth += 1
-#        if ThreadManagedRegion.context_depth == 1:
-#            set_num_threads(self.context_threads)
-#
-#    def __exit__(self, *_):
-#        if context_depth == 1:
-#            set_num_threads(self.preset_threads)
-#        ThreadManagedRegion.context_depth -= 1
-#
-#
-# class SingleThreadedRegion(ThreadManagedRegion):
-#    """
-#    EXPERIMENTAL. Defines a context manager that enforces single threaded execution in a region
-#    of code.
-#    """
-#
-#    def __init__(self):
-#        super().__init__(1)
 
 
 class CustomThreadController(LibController):

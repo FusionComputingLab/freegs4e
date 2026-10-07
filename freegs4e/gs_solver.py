@@ -47,12 +47,42 @@ class GSSolver(ABC):
 
     @abstractmethod
     def __init__(self, R, Z, *, order=2, dtype=np.float64):
-        # XXX: these are the recommended initialization parameters
+        """
+        Recommended initialization signature for subclasses.
+
+        Parameters
+        ----------
+        R, Z: ndarray (nr,nz)
+            grids with the radius and height of each point in the domain
+        order: int
+            order of the finite difference approximation to the GS operator
+        dtype: dtype
+            datatype to use, per numpy conventions
+        """
         pass
 
     def __call__(self, xi, rhs, **kwargs):
         """
-        Calls the solver and returns the solution in the shape of the given rhs
+        Calls the solver and returns the solution in the shape of the given rhs.
+
+        Parameters
+        ----------
+        xi: ndarray
+            initial guess (may be unused by the solver)
+        rhs: ndarray
+            right-hand-side of the GS equation, of shape `self.dimensions`
+        **kwargs:
+            passed on to `solve`
+
+        Returns
+        -------
+        ndarray
+            solution psi, with the shape of rhs
+
+        Raises
+        ------
+        ValueError
+            If the shape of rhs does not match the grid of the solver.
         """
 
         if rhs.shape != self.dimensions:
@@ -65,6 +95,10 @@ class GSSolver(ABC):
 
     @abstractmethod
     def solve(self, xi, rhs, **kwargs):
+        """
+        Solves the GS equation for the given rhs and returns psi (possibly flattened,
+        `__call__` restores the shape).
+        """
         pass
 
 
@@ -77,15 +111,8 @@ class GSLUSolver(GSSolver):
 
     with the Dirichlet (free-)boundary conditions applied.
 
-    Parameters
-    ----------
-    rhs: ndarray
-        right-hand-side of the GS equation
-
-    Returns
-    -------
-    psi
-        value of psi obtained for the given rhs
+    Instances are called as `solver(xi, rhs)` (see `GSSolver`); the solution has the
+    shape of `rhs`.
 
     """
 
@@ -98,11 +125,16 @@ class GSLUSolver(GSSolver):
         R: ndarray (nr,nz)
             ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
         Z: ndarray (nr,nz)
-            ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
+            ndarray of the shape of the domain (nr,nz) with the height of each point in the grid
         order: int
-            order of the finite difference approximation to use for the GS operator
+            order of the finite difference approximation to use for the GS operator (2 or 4, default 4)
         dtype: dtype
             datatype to use, per numpy conventions
+
+        Raises
+        ------
+        ValueError
+            If R and Z have different shapes, or `order` is not 2 or 4.
         """
 
         if R.shape != Z.shape:
@@ -164,15 +196,8 @@ class GSDSTSolver(GSSolver):
 
     with the Dirichlet (free-)boundary conditions applied.
 
-    Parameters
-    ----------
-    rhs: ndarray
-        right-hand-side of the GS equation
-
-    Returns
-    -------
-    psi
-        value of psi obtained for the given rhs
+    Instances are called as `solver(xi, rhs)` (see `GSSolver`); the solution has the
+    shape of `rhs`.
 
     """
 
@@ -187,11 +212,17 @@ class GSDSTSolver(GSSolver):
         R: ndarray (nr,nz)
             ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
         Z: ndarray (nr,nz)
-            ndarray of the shape of the domain (nr,nz) with the radius of each point in the grid
+            ndarray of the shape of the domain (nr,nz) with the height of each point in the grid
         order: int
-            order of the finite difference approximation to use for the GS operator
+            unused: the DST solver is always second order. A warning is issued if a different
+            value is given.
         dtype: dtype
             datatype to use, per numpy conventions
+
+        Raises
+        ------
+        ValueError
+            If R and Z have different shapes, or the grid has fewer than 3 points in R or Z.
         """
 
         if R.shape != Z.shape:
