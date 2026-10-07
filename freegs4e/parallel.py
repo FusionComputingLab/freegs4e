@@ -49,7 +49,12 @@ MAX_THREADS_FLAG = "NUMEXPR_MAX_THREADS"
 OMP_SET_FLAG = "OMP_NUM_THREADS"
 NUMEXPR_SET_FLAG = "NUMEXPR_NUM_THREADS"
 
-DEFAULT_THREADCOUNT = 1  # is changed at the end of the script
+DEFAULT_THREADCOUNT = (
+    1  # set default to minimal value, for small-grid performance
+)
+IDEAL_MAX_THREADCOUNT = (
+    ne.get_num_threads()
+)  # is changed at the end of the script
 
 thread_controller = ThreadpoolController()
 
@@ -83,6 +88,21 @@ def set_num_threads(num_threads):
 
     # for consistency in performance, always match the no. of threads used by numexpr
     ne.set_num_threads(num_threads)
+
+
+def set_max_threads():
+    """
+    Utility function to programatically set the default number of threads used by functions in
+    this parallel library to the estimated ideal maximum.
+
+    Returns
+    -------
+    int
+        New size of the threadpool
+    """
+
+    set_num_threads(IDEAL_MAX_THREADCOUNT)
+    return get_num_threads()
 
 
 def get_max_threads():
@@ -511,17 +531,22 @@ class CustomThreadController(LibController):
 
 
 # -----------------------------------------------------------------------------
-# Configure the default maximum number of threads
+# Configure the default and ideal maximum number of threads
 # -----------------------------------------------------------------------------
-
+#
 # If the following conditions are met:
 #
 # 1. The threadcount wasn't configured in the environment
 # 2. Either openmp or blas was identified by threadpoolctl
 # 3. The default threadcounts for those satisfy the numexpr maximum
 #
-# Then we use their default threadcount instead of numexpr's, because they are
-# more likely to be scheduler-aware
+# Then we save their default threadcount as the "ideal" maximum (instead of
+# numexpr's, because those are more likely to be scheduler-aware)
+#
+#
+# If at least condition (1) is met:
+#
+# We set the initial value of the number of threads to the (minimal) default
 
 
 # Check if the threadcount was configured through environment variables
@@ -568,11 +593,16 @@ if not num_threads_set and other_libs_info:
             break
 
 
-# If all conditions are met, set new default
+# Set new defaults according to the conditions above
 
-if lib_threadcount and not num_threads_set:
-    if lib_threadcount <= get_max_threads():
-        set_num_threads(lib_threadcount)
+if not num_threads_set:
+
+    set_num_threads(DEFAULT_THREADCOUNT)
+
+    if lib_threadcount and lib_threadcount <= get_max_threads():
+
+        IDEAL_MAX_THREADCOUNT = lib_threadcount
+
     else:
         warnings.warn(
             f"Estimated ideal maximum threadcount {lib_threadcount} is greater"
@@ -580,7 +610,6 @@ if lib_threadcount and not num_threads_set:
             f"{MAX_THREADS_FLAG} to {lib_threadcount}"
         )
 
-DEFAULT_THREADCOUNT = get_num_threads()
 
 # -----------------------------------------------------------------------------
 # Register the thread controller for this library with threadpoolctl
