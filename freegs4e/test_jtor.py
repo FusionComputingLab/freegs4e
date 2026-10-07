@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from . import jtor
 from .gradshafranov import mu0

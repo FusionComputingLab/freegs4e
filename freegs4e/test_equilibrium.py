@@ -1,12 +1,9 @@
 from types import SimpleNamespace
 
 import numpy as np
-import pytest
 
 from . import boundary, equilibrium, jtor, picard
 from .gradshafranov import mu0
-
-# TODO: fix this test suite
 
 
 def test_inoutseparatrix():
@@ -100,16 +97,3 @@ def test_poloidal_beta3_has_dimensionless_normalisation():
 
     expected = 2.0 * mu0 * pressure / boundary_field**2
     assert np.isclose(eq.poloidalBeta3(), expected)
-
-
-@pytest.mark.xfail(
-    reason="fails because of the removal of solver in freegs4e Equilibrium"
-)
-def test_setSolverVcycle():
-    eq = equilibrium.Equilibrium(
-        Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=65, ny=65
-    )
-
-    oldsolver = eq._solver
-    eq.setSolverVcycle(nlevels=2, ncycle=1, niter=5)
-    assert eq._solver != oldsolver
