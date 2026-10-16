@@ -1,3 +1,4 @@
+📢 **Development of FreeGS4E has ended. Support for FreeGS4E will soon end.** FreeGSNKE [135](https://github.com/FusionComputingLab/freegsnke/pull/135) absorbed all FreeGS4E functionality into FreeGSNKE. All future development of functionality that was owned by FreeGS4E is now owned by FreeGSNKE.
 
 # FreeGS4E: Free-boundary Grad-Shafranov for Evolution
 
